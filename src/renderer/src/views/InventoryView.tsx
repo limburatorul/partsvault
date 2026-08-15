@@ -71,15 +71,41 @@ export default function InventoryView(): JSX.Element {
     reload()
   }
 
-  async function searchSuppliers(component: Component): Promise<void> {
+  /** Cauta la furnizori orice text, fara sa existe componenta in inventar. */
+  async function searchSuppliersFor(query: string): Promise<void> {
+    const trimmed = query.trim()
+    if (!trimmed) return
+    setSupplierQuery(trimmed)
+    setSupplierResults(null)
+    setSupplierResults(await window.api.suppliers.search(trimmed))
+  }
+
+  async function searchSuppliersForComponent(component: Component): Promise<void> {
     const query = component.partNumber || component.type
     if (!query) {
       window.alert('Componenta n-are part number sau tip dupa care sa caut.')
       return
     }
-    setSupplierQuery(query)
+    await searchSuppliersFor(query)
+  }
+
+  /**
+   * Din rezultatul unui furnizor direct in inventar: dupa ce ai comandat piesa,
+   * o adaugi cu datele deja completate, fara sa le retastezi.
+   */
+  function addFromSupplier(partNumber: string, manufacturer?: string, description?: string): void {
+    setSupplierQuery(null)
     setSupplierResults(null)
-    setSupplierResults(await window.api.suppliers.search(query))
+    setPanel({
+      kind: 'edit',
+      component: {
+        partNumber,
+        manufacturer,
+        type: description ?? '',
+        category: schema?.categories[0],
+        quantity: 0
+      }
+    })
   }
 
   async function refreshSchema(): Promise<void> {
@@ -107,7 +133,8 @@ export default function InventoryView(): JSX.Element {
     <>
       <h2 className="page-title">Componente</h2>
       <p className="page-sub">
-        Ce ai in sertare, unde e si cat a mai ramas. Ce nu ai, il cauti la furnizori.
+        Ce ai in sertare, unde e si cat a mai ramas. Scrie un cod in campul de cautare: daca nu il
+        ai, apesi Enter si il cauti direct la furnizori.
       </p>
 
       {stats && (
@@ -132,7 +159,12 @@ export default function InventoryView(): JSX.Element {
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Cauta dupa cod, tip, valoare, locatie..."
+          onKeyDown={(e) => {
+            // Enter cauta la furnizori: filtrarea inventarului se face oricum
+            // in timp ce tastezi, deci tasta e libera pentru pasul urmator.
+            if (e.key === 'Enter') searchSuppliersFor(filter)
+          }}
+          placeholder="Cauta in sertare dupa cod, tip, valoare, locatie..."
         />
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">Toate categoriile</option>
@@ -142,6 +174,13 @@ export default function InventoryView(): JSX.Element {
             </option>
           ))}
         </select>
+        <button
+          onClick={() => searchSuppliersFor(filter)}
+          disabled={!filter.trim()}
+          title="Cauta codul din campul de mai sus la Mouser, Farnell, TME, DigiKey si restul"
+        >
+          Cauta la furnizori
+        </button>
         <button
           className="primary"
           onClick={() => setPanel({ kind: 'edit', component: { category: schema.categories[0] } })}
@@ -188,6 +227,7 @@ export default function InventoryView(): JSX.Element {
         <SupplierPanel
           query={supplierQuery}
           results={supplierResults}
+          onAddToInventory={addFromSupplier}
           onClose={() => {
             setSupplierQuery(null)
             setSupplierResults(null)
@@ -197,9 +237,34 @@ export default function InventoryView(): JSX.Element {
 
       {components.length === 0 && (
         <div className="empty">
-          {filter || category || lowStockOnly
-            ? 'Nicio componenta care sa se potriveasca.'
-            : 'Inventarul e gol. Apasa "Adauga" pentru prima componenta.'}
+          {filter.trim() ? (
+            // fix cazul cerut: nu am piesa in sertare, deci de aici pornesc catre furnizori
+            <>
+              <p style={{ marginBottom: 4 }}>
+                Nu ai <b className="mono">{filter.trim()}</b> in inventar.
+              </p>
+              <p style={{ marginTop: 0, marginBottom: 18 }}>Cauta la furnizori sau adaug-o manual.</p>
+              <div style={{ display: 'flex', gap: 9, justifyContent: 'center' }}>
+                <button className="primary" onClick={() => searchSuppliersFor(filter)}>
+                  Cauta la furnizori
+                </button>
+                <button
+                  onClick={() =>
+                    setPanel({
+                      kind: 'edit',
+                      component: { partNumber: filter.trim(), category: schema.categories[0] }
+                    })
+                  }
+                >
+                  Adauga in inventar
+                </button>
+              </div>
+            </>
+          ) : category || lowStockOnly ? (
+            'Nicio componenta care sa se potriveasca.'
+          ) : (
+            'Inventarul e gol. Apasa "Adauga" pentru prima componenta.'
+          )}
         </div>
       )}
 
@@ -249,7 +314,7 @@ export default function InventoryView(): JSX.Element {
                       >
                         Editeaza
                       </button>
-                      <button className="ghost" onClick={() => searchSuppliers(c)}>
+                      <button className="ghost" onClick={() => searchSuppliersForComponent(c)}>
                         Furnizori
                       </button>
                       <button className="ghost danger" onClick={() => remove(c)}>

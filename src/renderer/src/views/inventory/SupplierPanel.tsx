@@ -10,11 +10,14 @@ import type { SupplierResult } from '../../../../shared/inventory'
 export default function SupplierPanel({
   query,
   results,
-  onClose
+  onClose,
+  onAddToInventory
 }: {
   query: string
   results: SupplierResult[] | null
   onClose: () => void
+  /** Trece piesa gasita in inventar, cu datele deja completate. */
+  onAddToInventory: (partNumber: string, manufacturer?: string, description?: string) => void
 }): JSX.Element {
   const withData = (results ?? []).filter((r) => !r.linkOnly)
   const linksOnly = (results ?? []).filter((r) => r.linkOnly)
@@ -66,6 +69,14 @@ export default function SupplierPanel({
                           Datasheet
                         </button>
                       )}
+                      <button
+                        className="ghost"
+                        onClick={() =>
+                          onAddToInventory(r.partNumber ?? query, r.manufacturer, r.description)
+                        }
+                      >
+                        In inventar
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -98,6 +109,7 @@ export default function SupplierPanel({
       )}
 
       <div className="panel-actions">
+        <button onClick={() => onAddToInventory(query)}>Adauga {query} in inventar</button>
         <button className="primary" onClick={onClose}>
           Inchide
         </button>

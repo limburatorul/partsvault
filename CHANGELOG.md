@@ -6,6 +6,23 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.3.1] - 2026-08-16
+
+### Corectat
+
+- **Cautarea la furnizori nu avea de unde sa porneasca.** Butonul exista doar pe
+  un rand din tabel, adica doar pentru componentele pe care le ai deja -- fix
+  invers fata de cerinta, care era sa cauti ce *nu* ai. Campul de sus filtra
+  doar inventarul si, cand nu gasea nimic, se termina intr-o fundatura.
+  Acum: buton **Cauta la furnizori** langa campul de cautare, Enter face acelasi
+  lucru, iar cand filtrul nu gaseste nimic apare direct optiunea de a cauta la
+  furnizori sau de a adauga piesa in inventar.
+
+### Adaugat
+
+- **Din rezultatul furnizorului direct in inventar**, cu part number, producator
+  si descriere deja completate.
+
 ## [0.3.0] - 2026-08-15
 
 ### Adaugat
