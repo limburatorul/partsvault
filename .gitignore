@@ -1,0 +1,10 @@
+node_modules/
+out/
+release/
+dist/
+library/
+*.log
+.DS_Store
+
+# datele varianta portabila: config, index si PDF-urile descarcate
+PartsVault-Date/
