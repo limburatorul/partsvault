@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import { renderHtml } from '../../browser'
 import { httpFetch } from '../../http'
 import { cleanTitle, dedupeByUrl, squash, unwrapDuckDuckGo } from '../scrape'
 import type { RawHit, Source, SourceContext } from '../types'
@@ -60,6 +61,52 @@ interface Engine {
     signal: AbortSignal,
     accept?: (results: EngineResult[]) => boolean
   ): Promise<EngineResult[]>
+}
+
+/**
+ * DuckDuckGo randat intr-un Chromium adevarat.
+ *
+ * Acelasi motor care prin `fetch()` ne servea pagini de "anomaly", cerut printr-un
+ * browser complet, intoarce rezultatele intregi. Diferenta nu e cosmetica:
+ * pentru "Logitech Z5500 service manual", fetch dadea zero, iar randarea a adus
+ * Elektrotanya, ManualsLib si Scribd -- adica exact ce gaseste omul manual.
+ *
+ * De aceea e primul din rotatie, inaintea variantelor pe fetch.
+ */
+const duckduckgoRendered: Engine = {
+  id: 'ddg-render',
+  async run(query, signal) {
+    const html = await renderHtml(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
+      timeoutMs: 30_000,
+      waitForSelector: '[data-testid="result"]',
+      settleMs: 1200,
+      signal
+    })
+    if (!html) return []
+
+    const $ = cheerio.load(html)
+    const out: EngineResult[] = []
+
+    $('[data-testid="result"]').each((_, el) => {
+      const anchor = $(el).find('a[data-testid="result-title-a"]').first()
+      const href = anchor.attr('href')
+      if (href && /^https?:\/\//.test(href)) {
+        out.push({ url: href, title: anchor.text().replace(/\s+/g, ' ').trim() })
+      }
+    })
+
+    // rezerva daca DDG isi schimba atributele de test
+    if (!out.length) {
+      $('a[href^="http"]').each((_, el) => {
+        const href = $(el).attr('href') as string
+        if (/duckduckgo\.com|microsoft|w3\.org/.test(href)) return
+        const text = $(el).text().replace(/\s+/g, ' ').trim()
+        if (text.length > 10) out.push({ url: href, title: text })
+      })
+    }
+
+    return out.slice(0, 20)
+  }
 }
 
 /**
@@ -161,8 +208,9 @@ const duckduckgo: Engine = {
   }
 }
 
-// SearXNG primul: vede rezultatele Google, deci gaseste ce gaseste si omul manual
-const ENGINES: Engine[] = [searxng, bingRss, duckduckgo]
+// Randarea prima: e singura care s-a dovedit ca nu e servita degradat.
+// Celelalte raman ca rezerva, fiindca sunt mult mai ieftine cand functioneaza.
+const ENGINES: Engine[] = [duckduckgoRendered, searxng, bingRss, duckduckgo]
 
 /**
  * Ruleaza o interogare pe primul motor care intoarce ceva relevant.
@@ -316,9 +364,9 @@ function guessManufacturerFromDomain(url: string): string | undefined {
 
 export const webSearchSource: Source = {
   id: 'websearch',
-  label: 'Cautare web (SearXNG + Bing + DuckDuckGo)',
+  label: 'Cautare web (browser randat + rezerve)',
   tier: 'websearch',
-  note: 'Cauta pe tot webul, rotind intre motoare ca sa nu fim blocati. SearXNG vede rezultatele Google.',
+  note: 'Cauta pe tot webul dintr-un Chromium real, ca sa nu primim rezultate degradate ca la scraping.',
 
   async search(ctx: SourceContext): Promise<RawHit[]> {
     // termenii fata de care validez relevanta raspunsului

@@ -1,11 +1,12 @@
 import type { SupplierResult } from '../../../../shared/inventory'
 
 /**
- * Rezultatele de la furnizori.
+ * Rezultatele de la furnizori, intr-o singura lista.
  *
- * Randurile `linkOnly` sunt furnizorii fara cheie API configurata: nu am pret
- * si stoc, dar butonul duce direct la cautarea lor, cu codul deja completat.
- * Asa lista e mereu completa, indiferent daca omul si-a pus vreo cheie.
+ * Randurile venite prin API au denumire, stoc si pret. Cele fara cheie
+ * configurata apar pe acelasi tabel, cu un buton care deschide cautarea
+ * magazinului -- ca lista sa fie mereu completa si sa se vada dintr-o privire
+ * ce lipseste pentru a avea si acolo date.
  */
 export default function SupplierPanel({
   query,
@@ -19,14 +20,31 @@ export default function SupplierPanel({
   /** Trece piesa gasita in inventar, cu datele deja completate. */
   onAddToInventory: (partNumber: string, manufacturer?: string, description?: string) => void
 }): JSX.Element {
-  const withData = (results ?? []).filter((r) => !r.linkOnly)
-  const linksOnly = (results ?? []).filter((r) => r.linkOnly)
-
-  function bestPrice(r: SupplierResult): string {
+  /** Cel mai mic pret unitar din pragurile de cantitate. */
+  function priceOf(r: SupplierResult): string {
     if (!r.priceBreaks?.length) return '—'
     const cheapest = [...r.priceBreaks].sort((a, b) => a.price - b.price)[0]
-    return `${cheapest.price.toFixed(3)} ${cheapest.currency} / buc (de la ${cheapest.quantity})`
+    const price = cheapest.price < 1 ? cheapest.price.toFixed(3) : cheapest.price.toFixed(2)
+    const from = cheapest.quantity > 1 ? ` (de la ${cheapest.quantity} buc)` : ''
+    return `${price} ${cheapest.currency}${from}`
   }
+
+  function stockOf(r: SupplierResult): JSX.Element {
+    if (r.linkOnly) return <span style={{ color: 'var(--text-faint)' }}>—</span>
+    if (r.stock === undefined) return <span style={{ color: 'var(--text-faint)' }}>necunoscut</span>
+    if (r.stock > 0) {
+      return (
+        <span style={{ color: 'var(--good)' }}>
+          da <span style={{ color: 'var(--text-dim)' }}>({r.stock})</span>
+        </span>
+      )
+    }
+    return <span style={{ color: 'var(--bad)' }}>nu</span>
+  }
+
+  // furnizorii cu date reale primii; link-urile simple raman la coada
+  const rows = [...(results ?? [])].sort((a, b) => Number(a.linkOnly) - Number(b.linkOnly))
+  const missingKeys = rows.filter((r) => r.linkOnly).length
 
   return (
     <div className="card panel">
@@ -34,41 +52,52 @@ export default function SupplierPanel({
 
       {results === null && <p className="hint">Caut la furnizori...</p>}
 
-      {results !== null && withData.length > 0 && (
-        <>
-          <h4 className="sub-head">Rezultate cu pret si stoc</h4>
-          <div className="table-wrap">
-            <table className="inv-table">
-              <thead>
-                <tr>
-                  <th>Furnizor</th>
-                  <th>Part number</th>
-                  <th>Producator</th>
-                  <th>Stoc</th>
-                  <th>Pret</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {withData.map((r, i) => (
-                  <tr key={`${r.supplierId}-${i}`}>
-                    <td>{r.supplierLabel}</td>
-                    <td className="mono">{r.partNumber ?? '—'}</td>
-                    <td>{r.manufacturer ?? '—'}</td>
-                    <td>{r.stock !== undefined ? r.stock : '—'}</td>
-                    <td>{bestPrice(r)}</td>
-                    <td className="row-actions">
-                      <button className="ghost" onClick={() => window.api.openExternal(r.url)}>
-                        Deschide
+      {results !== null && (
+        <div className="table-wrap">
+          <table className="inv-table">
+            <thead>
+              <tr>
+                <th>Furnizor</th>
+                <th>Denumire</th>
+                <th>Producator</th>
+                <th style={{ textAlign: 'center' }}>In stoc</th>
+                <th>Pret</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={`${r.supplierId}-${i}`}>
+                  <td>{r.supplierLabel}</td>
+                  <td>
+                    <div className="mono">{r.partNumber ?? '—'}</div>
+                    {r.description && (
+                      <div style={{ color: 'var(--text-faint)', fontSize: 11.5 }}>
+                        {r.description.slice(0, 70)}
+                      </div>
+                    )}
+                    {r.linkOnly && (
+                      <div style={{ color: 'var(--text-faint)', fontSize: 11.5 }}>
+                        fara cheie API &mdash; cauta in browser
+                      </div>
+                    )}
+                  </td>
+                  <td>{r.manufacturer ?? '—'}</td>
+                  <td style={{ textAlign: 'center' }}>{stockOf(r)}</td>
+                  <td className="mono">{r.linkOnly ? '—' : priceOf(r)}</td>
+                  <td className="row-actions">
+                    <button className="ghost" onClick={() => window.api.openExternal(r.url)}>
+                      {r.linkOnly ? 'Cauta' : 'Deschide'}
+                    </button>
+                    {r.datasheetUrl && (
+                      <button
+                        className="ghost"
+                        onClick={() => window.api.openExternal(r.datasheetUrl as string)}
+                      >
+                        Datasheet
                       </button>
-                      {r.datasheetUrl && (
-                        <button
-                          className="ghost"
-                          onClick={() => window.api.openExternal(r.datasheetUrl as string)}
-                        >
-                          Datasheet
-                        </button>
-                      )}
+                    )}
+                    {!r.linkOnly && (
                       <button
                         className="ghost"
                         onClick={() =>
@@ -77,35 +106,21 @@ export default function SupplierPanel({
                       >
                         In inventar
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {results !== null && linksOnly.length > 0 && (
-        <>
-          <h4 className="sub-head">Cauta in browser</h4>
-          <p className="hint">
-            Fara cheie API nu pot aduce pret si stoc in aplicatie, dar butoanele deschid cautarea cu
-            codul completat. Cheile se pun in Setari.
-          </p>
-          <div className="chip-list">
-            {linksOnly.map((r) => (
-              <button
-                key={r.supplierId}
-                className="chip"
-                title={r.description}
-                onClick={() => window.api.openExternal(r.url)}
-              >
-                {r.supplierLabel}
-              </button>
-            ))}
-          </div>
-        </>
+      {results !== null && missingKeys > 0 && (
+        <p className="hint" style={{ marginTop: 12, marginBottom: 0 }}>
+          {missingKeys} furnizori apar doar ca link: magazinele mari blocheaza citirea automata a
+          paginilor, deci stocul si pretul se pot aduce doar prin API-ul lor oficial. Cheia e
+          gratuita si se pune in Setari.
+        </p>
       )}
 
       <div className="panel-actions">

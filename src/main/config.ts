@@ -21,7 +21,8 @@ const DEFAULTS: AppConfig = {
   politenessDelayMs: 900,
   maxConcurrentDownloads: 3,
   maxFileSizeMb: 80,
-  supplierApiKeys: {}
+  supplierApiKeys: {},
+  supplierApiSecrets: {}
 }
 
 let cached: AppConfig | null = null

@@ -106,27 +106,68 @@ export default function SettingsView({
         {suppliers
           .filter((s) => s.supportsApi)
           .map((s) => (
-            <div className="field" key={s.id}>
-              <label>
-                {s.label} <span className="badge">{s.region}</span>
-              </label>
-              <input
-                type="password"
-                value={config.supplierApiKeys?.[s.id] ?? ''}
-                onChange={(e) =>
-                  patch({
-                    supplierApiKeys: { ...config.supplierApiKeys, [s.id]: e.target.value.trim() }
-                  })
-                }
-                placeholder={s.apiConfigured ? 'cheie configurata' : 'lipseste cheia'}
-                style={{ flex: 1, fontFamily: 'Consolas, monospace' }}
-              />
+            <div className="source-row" key={s.id}>
+              <div className="source-info">
+                <div className="source-name">
+                  {s.label} <span className="badge">{s.region}</span>
+                  {s.apiConfigured && (
+                    <span className="badge" style={{ color: 'var(--good)' }}>
+                      configurat
+                    </span>
+                  )}
+                </div>
+                <div className="field" style={{ marginTop: 8, marginBottom: 0 }}>
+                  <label style={{ minWidth: 90 }}>{s.keyLabel ?? 'API key'}</label>
+                  <input
+                    type="password"
+                    value={config.supplierApiKeys?.[s.id] ?? ''}
+                    onChange={(e) =>
+                      patch({
+                        supplierApiKeys: {
+                          ...config.supplierApiKeys,
+                          [s.id]: e.target.value.trim()
+                        }
+                      })
+                    }
+                    placeholder="lipseste"
+                    style={{ flex: 1, fontFamily: 'Consolas, monospace' }}
+                  />
+                </div>
+                {s.needsSecret && (
+                  <div className="field" style={{ marginTop: 8, marginBottom: 0 }}>
+                    <label style={{ minWidth: 90 }}>{s.secretLabel ?? 'Secret'}</label>
+                    <input
+                      type="password"
+                      value={config.supplierApiSecrets?.[s.id] ?? ''}
+                      onChange={(e) =>
+                        patch({
+                          supplierApiSecrets: {
+                            ...config.supplierApiSecrets,
+                            [s.id]: e.target.value.trim()
+                          }
+                        })
+                      }
+                      placeholder="lipseste"
+                      style={{ flex: 1, fontFamily: 'Consolas, monospace' }}
+                    />
+                  </div>
+                )}
+                {s.apiSignupUrl && (
+                  <button
+                    className="ghost"
+                    style={{ marginTop: 6, paddingLeft: 0 }}
+                    onClick={() => window.api.openExternal(s.apiSignupUrl as string)}
+                  >
+                    De unde iau cheia &rarr;
+                  </button>
+                )}
+              </div>
             </div>
           ))}
-        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
-          Ceilalti furnizori (TME, DigiKey, RS, Optimus Digital, Cleste) sunt disponibili prin
-          cautare in browser. DigiKey si TME cer autentificare mai complicata decat o simpla cheie,
-          asa ca inca n-au integrare directa.
+        <p className="hint" style={{ marginTop: 14, marginBottom: 0 }}>
+          RS, Optimus Digital si Cleste raman doar cautare in browser: n-au API public. Citirea
+          automata a paginilor de magazin nu e o alternativa &mdash; toate cele mari stau in spatele
+          unei verificari anti-bot, pe care aplicatia nu incearca sa o ocoleasca.
         </p>
       </div>
 

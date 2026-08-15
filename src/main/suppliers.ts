@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto'
 import type { SupplierInfo, SupplierResult } from '../shared/inventory'
 import { loadConfig } from './config'
 import { httpFetch } from './http'
@@ -22,7 +23,17 @@ interface SupplierDef {
   /** Pagina de cautare pentru un cod de piesa. */
   searchUrl: (query: string) => string
   /** Interogare prin API; lipseste cand furnizorul nu are integrare. */
-  api?: (query: string, key: string, signal?: AbortSignal) => Promise<SupplierResult[]>
+  api?: (
+    query: string,
+    key: string,
+    secret: string,
+    signal?: AbortSignal
+  ) => Promise<SupplierResult[]>
+  /** Furnizorul cere si o parte secreta pe langa cheie. */
+  needsSecret?: boolean
+  apiSignupUrl?: string
+  keyLabel?: string
+  secretLabel?: string
 }
 
 // ---------------------------------------------------------------- API Mouser
@@ -61,6 +72,7 @@ function parsePrice(price?: string): number | undefined {
 async function mouserApi(
   query: string,
   key: string,
+  _secret: string,
   signal?: AbortSignal
 ): Promise<SupplierResult[]> {
   const res = await httpFetch(`https://api.mouser.com/api/v1/search/keyword?apiKey=${key}`, {
@@ -113,6 +125,7 @@ interface FarnellResponse {
 async function farnellApi(
   query: string,
   key: string,
+  _secret: string,
   signal?: AbortSignal
 ): Promise<SupplierResult[]> {
   const params = new URLSearchParams({
@@ -152,6 +165,218 @@ async function farnellApi(
   }))
 }
 
+// -------------------------------------------------------------------- API TME
+
+interface TmeResponse {
+  Data?: {
+    ProductList?: Array<{
+      Symbol?: string
+      OriginalSymbol?: string
+      Producer?: string
+      Description?: string
+      ProductInformationPage?: string
+    }>
+  }
+}
+
+interface TmePriceResponse {
+  Data?: {
+    ProductList?: Array<{
+      Symbol?: string
+      Amount?: number
+      PriceList?: Array<{ Amount?: number; PriceValue?: number }>
+      Unit?: string
+    }>
+  }
+}
+
+/**
+ * TME semneaza fiecare cerere: HMAC-SHA1 peste metoda, URL si parametrii
+ * sortati, cu secretul contului. Fara semnatura corecta raspunde 401.
+ */
+function tmeSignature(url: string, params: Record<string, string>, secret: string): string {
+  const sorted = Object.keys(params)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&')
+  const base = `POST&${encodeURIComponent(url)}&${encodeURIComponent(sorted)}`
+  return createHmac('sha1', secret).update(base).digest('base64')
+}
+
+async function tmePost<T>(
+  endpoint: string,
+  params: Record<string, string>,
+  secret: string,
+  signal?: AbortSignal
+): Promise<T | null> {
+  const signed = { ...params, ApiSignature: tmeSignature(endpoint, params, secret) }
+  const body = Object.entries(signed)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&')
+
+  const res = await httpFetch(endpoint, {
+    method: 'POST',
+    body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeoutMs: 25_000,
+    retries: 1,
+    signal
+  })
+  if (!res.ok) throw new Error(`TME a raspuns ${res.status}`)
+  return (await res.json()) as T
+}
+
+async function tmeApi(
+  query: string,
+  token: string,
+  secret: string,
+  signal?: AbortSignal
+): Promise<SupplierResult[]> {
+  const base = { Token: token, Country: 'RO', Language: 'RO' }
+
+  const found = await tmePost<TmeResponse>(
+    'https://api.tme.eu/Products/Search.json',
+    { ...base, SearchPlain: query },
+    secret,
+    signal
+  )
+  const products = (found?.Data?.ProductList ?? []).slice(0, 6)
+  if (!products.length) return []
+
+  // preturile si stocul vin dintr-un al doilea apel, pe simbolurile gasite
+  const symbols: Record<string, string> = { ...base }
+  products.forEach((p, i) => {
+    symbols[`SymbolList[${i}]`] = p.Symbol ?? ''
+  })
+
+  const priced = await tmePost<TmePriceResponse>(
+    'https://api.tme.eu/Products/GetPricesAndStocks.json',
+    symbols,
+    secret,
+    signal
+  ).catch(() => null)
+
+  const bySymbol = new Map(
+    (priced?.Data?.ProductList ?? []).map((p) => [p.Symbol ?? '', p])
+  )
+
+  return products.map((p) => {
+    const stockInfo = bySymbol.get(p.Symbol ?? '')
+    return {
+      supplierId: 'tme',
+      supplierLabel: 'TME',
+      url: p.ProductInformationPage ?? `https://www.tme.eu/ro/katalog/?search=${encodeURIComponent(query)}`,
+      partNumber: p.OriginalSymbol || p.Symbol,
+      description: p.Description,
+      manufacturer: p.Producer,
+      stock: stockInfo?.Amount,
+      priceBreaks: (stockInfo?.PriceList ?? [])
+        .filter((b) => typeof b.PriceValue === 'number')
+        .map((b) => ({ quantity: b.Amount ?? 1, price: b.PriceValue as number, currency: 'RON' })),
+      linkOnly: false
+    }
+  })
+}
+
+// ---------------------------------------------------------------- API DigiKey
+
+interface DigiKeyTokenResponse {
+  access_token?: string
+  expires_in?: number
+}
+
+interface DigiKeySearchResponse {
+  Products?: Array<{
+    ManufacturerProductNumber?: string
+    Description?: { ProductDescription?: string }
+    Manufacturer?: { Name?: string }
+    QuantityAvailable?: number
+    ProductUrl?: string
+    DatasheetUrl?: string
+    ProductVariations?: Array<{
+      StandardPricing?: Array<{ BreakQuantity?: number; UnitPrice?: number }>
+    }>
+  }>
+}
+
+/** Token-ul DigiKey e valabil ~10 minute; il pastrez cat timp e bun. */
+let digikeyToken: { value: string; expiresAt: number } | null = null
+
+async function digikeyAccessToken(
+  clientId: string,
+  clientSecret: string,
+  signal?: AbortSignal
+): Promise<string> {
+  if (digikeyToken && Date.now() < digikeyToken.expiresAt) return digikeyToken.value
+
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'client_credentials'
+  }).toString()
+
+  const res = await httpFetch('https://api.digikey.com/v1/oauth2/token', {
+    method: 'POST',
+    body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeoutMs: 20_000,
+    retries: 1,
+    signal
+  })
+  if (!res.ok) throw new Error(`DigiKey token: ${res.status}`)
+
+  const data = (await res.json()) as DigiKeyTokenResponse
+  if (!data.access_token) throw new Error('DigiKey nu a intors token')
+
+  digikeyToken = {
+    value: data.access_token,
+    // 60s marja, ca sa nu expire fix intre doua cereri
+    expiresAt: Date.now() + Math.max(60, (data.expires_in ?? 600) - 60) * 1000
+  }
+  return digikeyToken.value
+}
+
+async function digikeyApi(
+  query: string,
+  clientId: string,
+  clientSecret: string,
+  signal?: AbortSignal
+): Promise<SupplierResult[]> {
+  const token = await digikeyAccessToken(clientId, clientSecret, signal)
+
+  const res = await httpFetch('https://api.digikey.com/products/v4/search/keyword', {
+    method: 'POST',
+    body: { Keywords: query, Limit: 6, Offset: 0 },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'X-DIGIKEY-Client-Id': clientId,
+      'X-DIGIKEY-Locale-Site': 'RO',
+      'X-DIGIKEY-Locale-Language': 'en',
+      'X-DIGIKEY-Locale-Currency': 'RON'
+    },
+    timeoutMs: 25_000,
+    retries: 1,
+    signal
+  })
+  if (!res.ok) throw new Error(`DigiKey a raspuns ${res.status}`)
+
+  const data = (await res.json()) as DigiKeySearchResponse
+  return (data.Products ?? []).slice(0, 6).map((p) => ({
+    supplierId: 'digikey',
+    supplierLabel: 'DigiKey',
+    url: p.ProductUrl ?? `https://www.digikey.com/en/products/result?keywords=${encodeURIComponent(query)}`,
+    partNumber: p.ManufacturerProductNumber,
+    description: p.Description?.ProductDescription,
+    manufacturer: p.Manufacturer?.Name,
+    stock: p.QuantityAvailable,
+    datasheetUrl: p.DatasheetUrl,
+    priceBreaks: (p.ProductVariations?.[0]?.StandardPricing ?? [])
+      .filter((b) => typeof b.UnitPrice === 'number')
+      .map((b) => ({ quantity: b.BreakQuantity ?? 1, price: b.UnitPrice as number, currency: 'RON' })),
+    linkOnly: false
+  }))
+}
+
 // ------------------------------------------------------------------ registru
 
 const SUPPLIERS: SupplierDef[] = [
@@ -160,26 +385,40 @@ const SUPPLIERS: SupplierDef[] = [
     label: 'Mouser',
     region: 'International',
     searchUrl: (q) => `https://www.mouser.com/c/?q=${encodeURIComponent(q)}`,
-    api: mouserApi
+    api: mouserApi,
+    apiSignupUrl: 'https://www.mouser.com/api-hub/',
+    keyLabel: 'API key'
   },
   {
     id: 'farnell',
     label: 'Farnell',
     region: 'Romania',
     searchUrl: (q) => `https://ro.farnell.com/search?st=${encodeURIComponent(q)}`,
-    api: farnellApi
+    api: farnellApi,
+    apiSignupUrl: 'https://partner.element14.com/',
+    keyLabel: 'API key'
   },
   {
     id: 'tme',
     label: 'TME',
     region: 'Romania',
-    searchUrl: (q) => `https://www.tme.eu/ro/katalog/?search=${encodeURIComponent(q)}`
+    searchUrl: (q) => `https://www.tme.eu/ro/katalog/?search=${encodeURIComponent(q)}`,
+    api: tmeApi,
+    needsSecret: true,
+    apiSignupUrl: 'https://developers.tme.eu/',
+    keyLabel: 'Token',
+    secretLabel: 'App secret'
   },
   {
     id: 'digikey',
     label: 'DigiKey',
     region: 'International',
-    searchUrl: (q) => `https://www.digikey.com/en/products/result?keywords=${encodeURIComponent(q)}`
+    searchUrl: (q) => `https://www.digikey.com/en/products/result?keywords=${encodeURIComponent(q)}`,
+    api: digikeyApi,
+    needsSecret: true,
+    apiSignupUrl: 'https://developer.digikey.com/',
+    keyLabel: 'Client ID',
+    secretLabel: 'Client secret'
   },
   {
     id: 'rs',
@@ -209,7 +448,15 @@ export async function listSuppliers(): Promise<SupplierInfo[]> {
     label: s.label,
     region: s.region,
     supportsApi: Boolean(s.api),
-    apiConfigured: Boolean(s.api && cfg.supplierApiKeys?.[s.id])
+    apiConfigured: Boolean(
+      s.api &&
+        cfg.supplierApiKeys?.[s.id] &&
+        (!s.needsSecret || cfg.supplierApiSecrets?.[s.id])
+    ),
+    needsSecret: s.needsSecret,
+    apiSignupUrl: s.apiSignupUrl,
+    keyLabel: s.keyLabel,
+    secretLabel: s.secretLabel
   }))
 }
 
@@ -228,10 +475,12 @@ export async function searchSuppliers(
   if (!trimmed) return []
   const cfg = await loadConfig()
   const keys = cfg.supplierApiKeys ?? {}
+  const secrets = cfg.supplierApiSecrets ?? {}
 
   const results = await Promise.all(
     SUPPLIERS.map(async (supplier): Promise<SupplierResult[]> => {
       const key = keys[supplier.id]
+      const secret = secrets[supplier.id] ?? ''
       const fallback: SupplierResult = {
         supplierId: supplier.id,
         supplierLabel: supplier.label,
@@ -239,9 +488,9 @@ export async function searchSuppliers(
         linkOnly: true
       }
 
-      if (!supplier.api || !key) return [fallback]
+      if (!supplier.api || !key || (supplier.needsSecret && !secret)) return [fallback]
       try {
-        const viaApi = await supplier.api(trimmed, key, signal)
+        const viaApi = await supplier.api(trimmed, key, secret, signal)
         // API fara rezultate: las link-ul, poate cautarea manuala gaseste ceva
         return viaApi.length ? viaApi : [fallback]
       } catch {

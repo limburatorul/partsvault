@@ -147,6 +147,11 @@ export interface AppConfig {
    * cautarea la furnizori se face prin link in browser.
    */
   supplierApiKeys: Record<string, string>
+  /**
+   * Partea secreta, pentru furnizorii care cer o pereche: TME are token +
+   * secret pentru semnatura, DigiKey are client id + client secret.
+   */
+  supplierApiSecrets: Record<string, string>
 }
 
 /**

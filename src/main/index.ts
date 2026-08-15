@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron'
 import path from 'node:path'
+import { disposeBrowser } from './browser'
 import { loadConfig } from './config'
 import { setPolitenessDelay } from './http'
 import { registerIpc } from './ipc'
@@ -54,4 +55,9 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  // fereastra ascunsa de randare nu se inchide singura si ar tine procesul viu
+  disposeBrowser()
 })

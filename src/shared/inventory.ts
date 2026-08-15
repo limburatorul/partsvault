@@ -96,6 +96,13 @@ export interface SupplierInfo {
   supportsApi: boolean
   /** Cheia API e configurata in Setari. */
   apiConfigured: boolean
+  /** Furnizorul cere si o parte secreta pe langa cheie. */
+  needsSecret?: boolean
+  /** Unde isi ia utilizatorul cheia. */
+  apiSignupUrl?: string
+  /** Ce anume trebuie pus in cele doua campuri. */
+  keyLabel?: string
+  secretLabel?: string
 }
 
 /** Filtru pentru lista de componente. */

@@ -107,23 +107,29 @@ componenta poti pune un prag sub care e semnalata ca fiind pe terminate.
 
 ### Furnizori
 
-| Furnizor | Regiune | Integrare |
-|---|---|---|
-| Mouser | International | API (pret, stoc, datasheet) |
-| Farnell | Romania | API (pret, stoc, datasheet) |
-| TME | Romania | cautare in browser |
-| DigiKey | International | cautare in browser |
-| RS Components | Romania | cautare in browser |
-| Optimus Digital | Romania | cautare in browser |
-| Cleste | Romania | cautare in browser |
+Rezultatele apar intr-un singur tabel, cu denumirea gasita la furnizor, daca e
+sau nu in stoc, si pretul.
 
-Fara nicio configurare, butonul **Furnizori** deschide cautarea fiecarui magazin
-cu codul completat -- merge intotdeauna si nu se strica. Daca pui o cheie API in
-Setari, Mouser si Farnell intorc pret, stoc si link la datasheet direct in
-aplicatie. Cheile stau local, in fisierul de configurare.
+| Furnizor | Regiune | Integrare | Ce cere |
+|---|---|---|---|
+| Mouser | International | API | API key |
+| Farnell | Romania | API | API key |
+| TME | Romania | API | Token + secret (semnatura HMAC) |
+| DigiKey | International | API | Client ID + secret (OAuth) |
+| RS Components | Romania | cautare in browser | — |
+| Optimus Digital | Romania | cautare in browser | — |
+| Cleste | Romania | cautare in browser | — |
 
-DigiKey si TME cer autentificare mai complicata decat o simpla cheie (OAuth,
-respectiv semnatura HMAC), asa ca deocamdata sunt doar cautare in browser.
+Fara nicio configurare, fiecare furnizor apare in tabel ca link catre cautarea
+lui, cu codul completat -- merge intotdeauna si nu se strica. Cu o cheie pusa in
+Setari, furnizorul intoarce denumire, stoc, pret si datasheet direct in
+aplicatie. Cheile stau local, in fisierul de configurare, si nu pleaca nicaieri.
+
+**De ce e nevoie de chei:** citirea automata a paginilor de magazin nu e o
+alternativa. Verificat pe viu, cu randare intr-un browser complet: Mouser,
+DigiKey, TME si Farnell raspund toate cu verificare anti-bot (Cloudflare
+Turnstile). Aplicatia nu incearca sa o ocoleasca. Magazinele mici romanesti
+randeaza normal, dar de obicei n-au in catalog piesele cautate aici.
 
 ## Cascada de surse
 
@@ -144,20 +150,27 @@ fiecare tipar functional valoreaza cat zece interogari de motor de cautare.
 
 ### Despre motoarele de cautare
 
-Motoarele fara cheie de API nu suporta rafale, iar felul in care cedeaza e o
-capcana. Masurat pe viu:
+Motoarele interogate cu `fetch()` nu suporta rafale, iar felul in care cedeaza e
+o capcana. Masurat pe viu:
 
 - DuckDuckGo intoarce o pagina de *anomaly* dupa cateva interogari;
 - Bing e mai perfid — continua sa raspunda `200` cu zece rezultate, dar complet
   nerelevante (linii aeriene, forumuri de mail) in loc sa semnaleze eroarea.
 
-De aceea aplicatia **valideaza relevanta** raspunsurilor: daca niciun rezultat
-nu mentioneaza piesa, motorul e marcat epuizat si nu mai e folosit in rularea
-curenta. Fara verificarea asta, un raspuns fals ar arata exact ca unul reusit.
+De aceea aplicatia **valideaza relevanta** raspunsurilor: cand interogarea are
+un token distinctiv (numar de model, cod de piesa), macar un rezultat trebuie
+sa-l contina. Verificarea pe *orice* cuvant nu ajunge — pentru "Logitech Z5500",
+zece link-uri catre logitech.com contin "logitech" si ar parea valide.
 
-Consecinta practica: bugetul de interogari e limitat deliberat (3 in cautare
-rapida, 7 in cea profunda). Nu creste limitele fara sa masori — se ajunge rapid
-la blocare.
+**Solutia de fond a fost sa nu mai folosim `fetch()`.** Electron are un Chromium
+complet inauntru: aceleasi pagini incarcate intr-o fereastra ascunsa executa
+JavaScript, au cookie-uri si arata exact ca la un utilizator real. Diferenta nu
+e cosmetica — pentru `Logitech Z5500 service manual`, `fetch` intorcea zero
+rezultate, iar randarea a adus 37, printre care Elektrotanya si ManualsLib.
+
+Randarea e in `src/main/browser.ts`, cu sesiune persistenta (cookie-urile de
+consimtamant se aduna in timp) si imagini blocate, ca sa fie rapida. Motoarele
+pe `fetch` raman ca rezerva: cand functioneaza, sunt mult mai ieftine.
 
 ## Diagnostic
 
@@ -190,6 +203,7 @@ src/
     verify.ts           validare PDF, extragere text, clasificare, incredere
     download.ts         descarcare cu limita de marime si deduplicare pe hash
     import.ts           import manual, pentru sursele fara descarcare automata
+    browser.ts          randare de pagini intr-un Chromium ascuns
     library.ts          index JSON + organizare pe disc
     inventory.ts        componente, schema definita de utilizator, export CSV
     suppliers.ts        link-out la magazine + API Mouser si Farnell
@@ -206,6 +220,13 @@ Diagnostic pentru inventar si furnizori, fara sa deschizi interfata:
 
 ```bash
 node scripts/run.mjs probe-inventory
+```
+
+Orice atinge randarea de pagini are nevoie de un Chromium adevarat, deci ruleaza
+prin Electron, nu prin harness-ul obisnuit:
+
+```bash
+node scripts/run-electron.mjs probe-app "Logitech Z5500"
 ```
 
 Libraria foloseste un index JSON, nu SQLite, ca sa nu existe dependinte native —
