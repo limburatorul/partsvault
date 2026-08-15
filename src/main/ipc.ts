@@ -1,4 +1,11 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { writeFile } from 'node:fs/promises'
+import type {
+  Component,
+  FieldDef,
+  InventoryQuery,
+  InventorySchema
+} from '../shared/inventory'
 import type {
   AppConfig,
   DownloadProgress,
@@ -6,6 +13,20 @@ import type {
   SearchProgress,
   SearchRequest
 } from '../shared/types'
+import {
+  addField,
+  adjustQuantity,
+  exportCsv,
+  getSchema,
+  inventoryStats,
+  listComponents,
+  removeComponent,
+  removeField,
+  resetInventoryCache,
+  saveSchema,
+  upsertComponent
+} from './inventory'
+import { listSuppliers, searchSuppliers, supplierSearchUrl } from './suppliers'
 import { defaultLibrarySuggestion, loadConfig, saveConfig, validateLibraryPath } from './config'
 import { downloadHit } from './download'
 import { setPolitenessDelay } from './http'
@@ -45,7 +66,10 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
 
   ipcMain.handle('config:set', async (_e, patch: Partial<AppConfig>): Promise<AppConfig> => {
     const next = await saveConfig(patch)
-    if (patch.libraryPath !== undefined) resetLibraryCache()
+    if (patch.libraryPath !== undefined) {
+      resetLibraryCache()
+      resetInventoryCache()
+    }
     if (patch.politenessDelayMs !== undefined) setPolitenessDelay(next.politenessDelayMs)
     return next
   })
@@ -153,6 +177,43 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
 
   ipcMain.handle('library:update', async (_e, id: string, patch: Partial<LibraryDoc>) =>
     updateDoc(id, patch)
+  )
+
+  // ---- inventar de componente ----
+
+  ipcMain.handle('inventory:schema', async () => getSchema())
+  ipcMain.handle('inventory:save-schema', async (_e, schema: InventorySchema) => saveSchema(schema))
+  ipcMain.handle('inventory:add-field', async (_e, field: Omit<FieldDef, 'id'>) => addField(field))
+  ipcMain.handle('inventory:remove-field', async (_e, id: string) => removeField(id))
+
+  ipcMain.handle('inventory:list', async (_e, query: InventoryQuery) => listComponents(query))
+  ipcMain.handle('inventory:upsert', async (_e, c: Partial<Component>) => upsertComponent(c))
+  ipcMain.handle('inventory:remove', async (_e, id: string) => removeComponent(id))
+  ipcMain.handle('inventory:adjust', async (_e, id: string, delta: number) =>
+    adjustQuantity(id, delta)
+  )
+  ipcMain.handle('inventory:stats', async () => inventoryStats())
+
+  ipcMain.handle('inventory:export-csv', async () => {
+    const csv = await exportCsv()
+    const window = getWindow()
+    const result = await dialog.showSaveDialog(window ?? undefined!, {
+      title: 'Exporta inventarul',
+      defaultPath: 'inventar.csv',
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    })
+    if (result.canceled || !result.filePath) return { ok: false }
+    // BOM ca Excel sa recunoasca diacriticele
+    await writeFile(result.filePath, `﻿${csv}`, 'utf8')
+    return { ok: true, path: result.filePath }
+  })
+
+  // ---- furnizori ----
+
+  ipcMain.handle('suppliers:list', async () => listSuppliers())
+  ipcMain.handle('suppliers:search', async (_e, query: string) => searchSuppliers(query))
+  ipcMain.handle('suppliers:url', async (_e, supplierId: string, query: string) =>
+    supplierSearchUrl(supplierId, query)
   )
 
   ipcMain.handle('shell:open-external', async (_e, url: string) => {

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppConfig } from '../../shared/types'
 import FirstRun from './views/FirstRun'
+import InventoryView from './views/InventoryView'
 import LibraryView from './views/LibraryView'
 import SearchView from './views/SearchView'
 import SettingsView from './views/SettingsView'
 
-type Tab = 'search' | 'library' | 'settings'
+type Tab = 'search' | 'library' | 'inventory' | 'settings'
 
 export default function App(): JSX.Element {
   const [config, setConfig] = useState<AppConfig | null>(null)
@@ -62,6 +63,12 @@ export default function App(): JSX.Element {
           <span className="nav-count">{docCount}</span>
         </button>
         <button
+          className={`nav-item ${tab === 'inventory' ? 'active' : ''}`}
+          onClick={() => setTab('inventory')}
+        >
+          Componente
+        </button>
+        <button
           className={`nav-item ${tab === 'settings' ? 'active' : ''}`}
           onClick={() => setTab('settings')}
         >
@@ -78,6 +85,7 @@ export default function App(): JSX.Element {
       <main className="main">
         {tab === 'search' && <SearchView onLibraryChanged={onLibraryChanged} />}
         {tab === 'library' && <LibraryView version={libraryVersion} onChanged={onLibraryChanged} />}
+        {tab === 'inventory' && <InventoryView />}
         {tab === 'settings' && <SettingsView config={config} onConfigChanged={setConfig} />}
       </main>
     </div>

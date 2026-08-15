@@ -1,9 +1,14 @@
 # PartsVault
 
-Aplicatie desktop care cauta datasheet-uri, scheme si note de aplicatie pentru
-circuite integrate, le descarca si le tine local, organizate si cautabile.
+Aplicatie desktop pentru atelierul de electronica. Face doua lucruri:
 
-Accentul e pe piesele **greu sau imposibil de gasit**: integrate scoase din
+1. **Cauta si arhiveaza documentatie** -- datasheet-uri, scheme, note de
+   aplicatie si manuale de service -- le descarca si le tine local, organizate
+   si cautabile.
+2. **Tine evidenta componentelor** din sertare: ce ai, cat mai ai si unde e. Iar
+   ce nu ai, il cauta la furnizori.
+
+Accentul e pe ce e **greu sau imposibil de gasit**: integrate scoase din
 productie, clone est-europene, cipuri din anii '70-'90 care nu mai au pagina la
 niciun producator.
 
@@ -86,6 +91,40 @@ Fiecare document primeste un nivel de incredere:
 - **probabil** — documentul acopera familia sau echivalentul piesei
 - **nesigur** — PDF scanat, fara strat de text
 
+## Inventarul de componente
+
+Nucleul e fix -- part number, categorie, tip, cantitate si locatie fizica
+(depozitare, rand, coloana) -- fiindca pe el se sprijina cautarea, sortarea si
+alertele de stoc. Restul il definesti tu: campuri de caracteristici de tip text,
+numar, lista de optiuni sau da/nu, cu unitate de masura, optional restranse la
+anumite categorii, ca formularul unui rezistor sa nu ceara frecventa de ceas.
+
+Campurile propuse la prima pornire (valoare, toleranta, tensiune, putere,
+capsula, montaj) sunt o sugestie, nu o structura impusa: pot fi sterse toate.
+
+Cautarea merge si dupa locatie, deci poti intreba "ce am in cutia A". Pe fiecare
+componenta poti pune un prag sub care e semnalata ca fiind pe terminate.
+
+### Furnizori
+
+| Furnizor | Regiune | Integrare |
+|---|---|---|
+| Mouser | International | API (pret, stoc, datasheet) |
+| Farnell | Romania | API (pret, stoc, datasheet) |
+| TME | Romania | cautare in browser |
+| DigiKey | International | cautare in browser |
+| RS Components | Romania | cautare in browser |
+| Optimus Digital | Romania | cautare in browser |
+| Cleste | Romania | cautare in browser |
+
+Fara nicio configurare, butonul **Furnizori** deschide cautarea fiecarui magazin
+cu codul completat -- merge intotdeauna si nu se strica. Daca pui o cheie API in
+Setari, Mouser si Farnell intorc pret, stoc si link la datasheet direct in
+aplicatie. Cheile stau local, in fisierul de configurare.
+
+DigiKey si TME cer autentificare mai complicata decat o simpla cheie (OAuth,
+respectiv semnatura HMAC), asa ca deocamdata sunt doar cautare in browser.
+
 ## Cascada de surse
 
 Sursele sunt interogate pe niveluri, de la ieftin si sigur catre scump si
@@ -145,12 +184,15 @@ DNS-ul. Nu au adaptoare, ca sa nu piardem timp pe surse care esueaza garantat.
 
 ```
 src/
-  main/                 procesul Electron: motorul de cautare
+  main/                 procesul Electron: motorul si datele
     partnumber.ts       normalizare, variante, producator din prefix
     equivalents.ts      tabele de echivalente RO / URSS / Tesla / RFT
     verify.ts           validare PDF, extragere text, clasificare, incredere
     download.ts         descarcare cu limita de marime si deduplicare pe hash
+    import.ts           import manual, pentru sursele fara descarcare automata
     library.ts          index JSON + organizare pe disc
+    inventory.ts        componente, schema definita de utilizator, export CSV
+    suppliers.ts        link-out la magazine + API Mouser si Farnell
     http.ts             User-Agent de browser, throttling per host, retry
     search/
       orchestrator.ts   cascada pe niveluri, scoring, oprire timpurie
@@ -158,6 +200,12 @@ src/
   preload/              puntea IPC, singura suprafata expusa interfetei
   renderer/             interfata React
 scripts/                harness de diagnostic, ruleaza in afara Electron
+```
+
+Diagnostic pentru inventar si furnizori, fara sa deschizi interfata:
+
+```bash
+node scripts/run.mjs probe-inventory
 ```
 
 Libraria foloseste un index JSON, nu SQLite, ca sa nu existe dependinte native —

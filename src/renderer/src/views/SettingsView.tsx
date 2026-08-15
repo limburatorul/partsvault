@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { SupplierInfo } from '../../../shared/inventory'
 import type { AppConfig, SourceInfo } from '../../../shared/types'
 
 const TIER_LABEL: Record<string, string> = {
@@ -17,10 +18,15 @@ export default function SettingsView({
   onConfigChanged: (cfg: AppConfig) => void
 }): JSX.Element {
   const [sources, setSources] = useState<SourceInfo[]>([])
+  const [suppliers, setSuppliers] = useState<SupplierInfo[]>([])
 
   useEffect(() => {
     window.api.sources.list().then(setSources).catch(() => setSources([]))
   }, [config.disabledSources])
+
+  useEffect(() => {
+    window.api.suppliers.list().then(setSuppliers).catch(() => setSuppliers([]))
+  }, [config.supplierApiKeys])
 
   async function patch(next: Partial<AppConfig>): Promise<void> {
     onConfigChanged(await window.api.config.set(next))
@@ -88,6 +94,40 @@ export default function SettingsView({
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="card">
+        <h3>Chei API furnizori</h3>
+        <p className="hint">
+          Optionale. Fara ele, cautarea la furnizori deschide magazinul in browser cu codul
+          completat &mdash; merge oricum. Cu cheie, vezi pret si stoc direct in aplicatie. Cheile se
+          tin local, in fisierul de configurare, si nu pleaca nicaieri altundeva.
+        </p>
+        {suppliers
+          .filter((s) => s.supportsApi)
+          .map((s) => (
+            <div className="field" key={s.id}>
+              <label>
+                {s.label} <span className="badge">{s.region}</span>
+              </label>
+              <input
+                type="password"
+                value={config.supplierApiKeys?.[s.id] ?? ''}
+                onChange={(e) =>
+                  patch({
+                    supplierApiKeys: { ...config.supplierApiKeys, [s.id]: e.target.value.trim() }
+                  })
+                }
+                placeholder={s.apiConfigured ? 'cheie configurata' : 'lipseste cheia'}
+                style={{ flex: 1, fontFamily: 'Consolas, monospace' }}
+              />
+            </div>
+          ))}
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+          Ceilalti furnizori (TME, DigiKey, RS, Optimus Digital, Cleste) sunt disponibili prin
+          cautare in browser. DigiKey si TME cer autentificare mai complicata decat o simpla cheie,
+          asa ca inca n-au integrare directa.
+        </p>
       </div>
 
       <div className="card">

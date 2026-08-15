@@ -76,6 +76,11 @@ export interface FetchOptions {
   /** Nu urmari redirectari -- util cand vreau sa vad Location-ul. */
   manualRedirect?: boolean
   signal?: AbortSignal
+  method?: 'GET' | 'POST'
+  /** Corpul cererii; obiectele sunt trimise ca JSON. */
+  body?: string | Record<string, unknown>
+  /** Anteturi suplimentare, peste cele implicite. */
+  headers?: Record<string, string>
 }
 
 export class HttpError extends Error {
@@ -91,7 +96,19 @@ export class HttpError extends Error {
 
 /** Fetch cu throttle, timeout si retry pe erori tranzitorii. */
 export async function httpFetch(url: string, opts: FetchOptions = {}): Promise<Response> {
-  const { timeoutMs = 20_000, referer, retries = 2, manualRedirect = false, signal } = opts
+  const {
+    timeoutMs = 20_000,
+    referer,
+    retries = 2,
+    manualRedirect = false,
+    signal,
+    method = 'GET',
+    body,
+    headers: extraHeaders
+  } = opts
+
+  const isJsonBody = body !== undefined && typeof body !== 'string'
+  const payload = body === undefined ? undefined : isJsonBody ? JSON.stringify(body) : body
 
   return withHostThrottle(url, async () => {
     let lastError: unknown
@@ -102,10 +119,13 @@ export async function httpFetch(url: string, opts: FetchOptions = {}): Promise<R
       const onAbort = () => controller.abort()
       signal?.addEventListener('abort', onAbort, { once: true })
       try {
-        const headers = { ...DEFAULT_HEADERS }
+        const headers = { ...DEFAULT_HEADERS, ...extraHeaders }
         if (referer) headers.Referer = referer
+        if (isJsonBody) headers['Content-Type'] = 'application/json'
         const res = await fetch(url, {
+          method,
           headers,
+          body: payload,
           redirect: manualRedirect ? 'manual' : 'follow',
           signal: controller.signal
         })

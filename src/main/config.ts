@@ -20,7 +20,8 @@ const DEFAULTS: AppConfig = {
   autoDownloadBest: false,
   politenessDelayMs: 900,
   maxConcurrentDownloads: 3,
-  maxFileSizeMb: 80
+  maxFileSizeMb: 80,
+  supplierApiKeys: {}
 }
 
 let cached: AppConfig | null = null

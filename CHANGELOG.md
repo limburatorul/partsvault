@@ -6,6 +6,24 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.3.0] - 2026-08-15
+
+### Adaugat
+
+- **Inventar de componente.** Ce ai in sertare, cu categorie, tip, cantitate si
+  locatie fizica (depozitare, rand, coloana). Cautarea merge si dupa locatie,
+  deci poti intreba "ce am in cutia A".
+- **Campuri definite de utilizator.** Peste nucleul fix iti definesti singur
+  caracteristicile: tip text, numar, lista de optiuni sau da/nu, cu unitate de
+  masura, optional restranse la anumite categorii. Campurile propuse implicit
+  pot fi sterse in intregime -- schema e a ta.
+- **Alerta de stoc**: prag pe componenta si filtru pentru ce e pe terminate.
+- **Cautare la furnizori**: Mouser, Farnell, TME, DigiKey, RS, Optimus Digital
+  si Cleste. Fara configurare deschide cautarea in browser cu codul completat;
+  cu o cheie API in Setari, Mouser si Farnell intorc pret, stoc si datasheet
+  direct in aplicatie.
+- **Export CSV** al inventarului, cu BOM ca Excel sa prinda diacriticele.
+
 ## [0.2.0] - 2026-08-15
 
 ### Adaugat

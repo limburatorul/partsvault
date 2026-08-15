@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  Component,
+  FieldDef,
+  InventoryQuery,
+  InventorySchema,
+  SupplierInfo,
+  SupplierResult
+} from '../shared/inventory'
+import type {
   AppConfig,
   DownloadProgress,
   LibraryDoc,
@@ -68,6 +76,39 @@ const api = {
       ipcRenderer.invoke('library:remove', id, deleteFile),
     update: (id: string, patch: Partial<LibraryDoc>): Promise<LibraryDoc | null> =>
       ipcRenderer.invoke('library:update', id, patch)
+  },
+
+  inventory: {
+    schema: (): Promise<InventorySchema> => ipcRenderer.invoke('inventory:schema'),
+    saveSchema: (schema: InventorySchema): Promise<InventorySchema> =>
+      ipcRenderer.invoke('inventory:save-schema', schema),
+    addField: (field: Omit<FieldDef, 'id'>): Promise<FieldDef> =>
+      ipcRenderer.invoke('inventory:add-field', field),
+    removeField: (id: string): Promise<boolean> => ipcRenderer.invoke('inventory:remove-field', id),
+
+    list: (query: InventoryQuery = {}): Promise<Component[]> =>
+      ipcRenderer.invoke('inventory:list', query),
+    upsert: (component: Partial<Component>): Promise<Component> =>
+      ipcRenderer.invoke('inventory:upsert', component),
+    remove: (id: string): Promise<boolean> => ipcRenderer.invoke('inventory:remove', id),
+    adjust: (id: string, delta: number): Promise<Component | null> =>
+      ipcRenderer.invoke('inventory:adjust', id, delta),
+    stats: (): Promise<{
+      total: number
+      totalPieces: number
+      lowStock: number
+      byCategory: Record<string, number>
+    }> => ipcRenderer.invoke('inventory:stats'),
+    exportCsv: (): Promise<{ ok: boolean; path?: string }> =>
+      ipcRenderer.invoke('inventory:export-csv')
+  },
+
+  suppliers: {
+    list: (): Promise<SupplierInfo[]> => ipcRenderer.invoke('suppliers:list'),
+    search: (query: string): Promise<SupplierResult[]> =>
+      ipcRenderer.invoke('suppliers:search', query),
+    url: (supplierId: string, query: string): Promise<string | null> =>
+      ipcRenderer.invoke('suppliers:url', supplierId, query)
   },
 
   openExternal: (url: string): Promise<boolean> => ipcRenderer.invoke('shell:open-external', url)

@@ -142,6 +142,11 @@ export interface AppConfig {
   maxConcurrentDownloads: number
   /** Nu descarca fisiere mai mari de atat (MB). */
   maxFileSizeMb: number
+  /**
+   * Chei API pentru furnizori, dupa id-ul furnizorului. Optionale: fara ele,
+   * cautarea la furnizori se face prin link in browser.
+   */
+  supplierApiKeys: Record<string, string>
 }
 
 /**

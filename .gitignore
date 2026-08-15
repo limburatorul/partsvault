@@ -4,6 +4,7 @@ release/
 dist/
 library/
 *.log
+*.tsbuildinfo
 .DS_Store
 
 # datele varianta portabila: config, index si PDF-urile descarcate
