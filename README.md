@@ -110,30 +110,31 @@ componenta poti pune un prag sub care e semnalata ca fiind pe terminate.
 Rezultatele apar intr-un singur tabel, cu denumirea gasita la furnizor, daca e
 sau nu in stoc, si pretul.
 
-| Furnizor | Regiune | Integrare | Ce cere |
-|---|---|---|---|
-| **Nexar / Octopart** | agregator | API | Client ID + secret |
-| Mouser | International | API | API key |
-| Farnell | Romania | API | API key |
-| TME | Romania | API | Token + secret (semnatura HMAC) |
-| DigiKey | International | API | Client ID + secret (OAuth) |
-| RS Components | Romania | cautare in browser | — |
-| Optimus Digital | Romania | cautare in browser | — |
-| Cleste | Romania | cautare in browser | — |
+| Furnizor | Regiune | Integrare | Ce cere | Cost |
+|---|---|---|---|---|
+| Mouser | International | API | API key | gratuit |
+| Farnell | Romania | API | API key | gratuit |
+| TME | Romania | API | Token + secret (HMAC) | gratuit |
+| DigiKey | International | API | Client ID + secret (OAuth) | gratuit |
+| RS Components | Romania | cautare in browser | — | — |
+| Optimus Digital | Romania | cautare in browser | — | — |
+| Cleste | Romania | cautare in browser | — | — |
+| Nexar / Octopart | agregator | API | Client ID + secret | **abonament** |
 
 Fara nicio configurare, fiecare furnizor apare in tabel ca link catre cautarea
 lui, cu codul completat -- merge intotdeauna si nu se strica. Cu o cheie pusa in
 Setari, furnizorul intoarce denumire, stoc, pret si datasheet direct in
 aplicatie. Cheile stau local, in fisierul de configurare, si nu pleaca nicaieri.
 
-**Daca pui una singura, pune Mouser.** Cheia se obtine in cateva minute si
-intoarce imediat pret si stoc.
+**Primele patru dau cheie gratuita.** Nu-ti trebuie toate -- fiecare in parte
+umple tabelul cu randul lui. Incepe cu Mouser, e cel mai rapid de obtinut.
 
 Nexar / Octopart ar fi fost varianta ideala -- un singur apel acopera toti
-distribuitorii -- dar planul lui gratuit nu include date de stoc. Testat pe cont
-real: autentificarea si interogarea trec, iar raspunsul e
-`You have exceeded your part limit of 0`. Integrarea e in aplicatie si
-functioneaza, deci merge daca ai un plan platit.
+distribuitorii -- dar datele de stoc cer abonament platit. Testat pe cont real:
+autentificarea si interogarea trec, iar raspunsul e
+`You have exceeded your part limit of 0`. Integrarea ramane in aplicatie pentru
+cine are oricum abonament, dar pentru cateva piese pe luna n-are sens sa
+platesti agregarea cand fiecare distribuitor da acces gratuit la ale lui.
 
 **De ce e nevoie de chei:** citirea automata a paginilor de magazin nu e o
 alternativa. Verificat pe viu, cu randare intr-un browser complet: Mouser,

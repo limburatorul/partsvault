@@ -36,6 +36,8 @@ interface SupplierDef {
   secretLabel?: string
   /** Acopera mai multi distribuitori deodata; randurile lui le inlocuiesc pe ale lor. */
   aggregator?: boolean
+  /** Cat costa accesul la API. */
+  pricing?: 'free' | 'paid'
 }
 
 // ---------------------------------------------------------------- API Mouser
@@ -539,20 +541,13 @@ async function nexarApi(
 
 // ------------------------------------------------------------------ registru
 
+/**
+ * Ordinea conteaza: e si ordinea din Setari, deci sugereaza pe unde sa inceapa
+ * omul. Cheile gratuite primele; Nexar la coada, fiindca agregarea lui se
+ * plateste -- irational pentru cateva piese pe luna, cand fiecare distribuitor
+ * da acces gratuit la ale lui.
+ */
 const SUPPLIERS: SupplierDef[] = [
-  {
-    // agregator: o singura cheie aduce stoc si pret de la toti distribuitorii
-    id: 'nexar',
-    label: 'Nexar / Octopart',
-    region: 'Agregator',
-    searchUrl: (q) => `https://octopart.com/search?q=${encodeURIComponent(q)}`,
-    api: nexarApi,
-    needsSecret: true,
-    apiSignupUrl: 'https://nexar.com/api',
-    keyLabel: 'Client ID',
-    secretLabel: 'Client secret',
-    aggregator: true
-  },
   {
     id: 'mouser',
     label: 'Mouser',
@@ -560,7 +555,8 @@ const SUPPLIERS: SupplierDef[] = [
     searchUrl: (q) => `https://www.mouser.com/c/?q=${encodeURIComponent(q)}`,
     api: mouserApi,
     apiSignupUrl: 'https://www.mouser.com/api-hub/',
-    keyLabel: 'API key'
+    keyLabel: 'API key',
+    pricing: 'free'
   },
   {
     id: 'farnell',
@@ -569,7 +565,8 @@ const SUPPLIERS: SupplierDef[] = [
     searchUrl: (q) => `https://ro.farnell.com/search?st=${encodeURIComponent(q)}`,
     api: farnellApi,
     apiSignupUrl: 'https://partner.element14.com/',
-    keyLabel: 'API key'
+    keyLabel: 'API key',
+    pricing: 'free'
   },
   {
     id: 'tme',
@@ -580,7 +577,8 @@ const SUPPLIERS: SupplierDef[] = [
     needsSecret: true,
     apiSignupUrl: 'https://developers.tme.eu/',
     keyLabel: 'Token',
-    secretLabel: 'App secret'
+    secretLabel: 'App secret',
+    pricing: 'free'
   },
   {
     id: 'digikey',
@@ -591,7 +589,8 @@ const SUPPLIERS: SupplierDef[] = [
     needsSecret: true,
     apiSignupUrl: 'https://developer.digikey.com/',
     keyLabel: 'Client ID',
-    secretLabel: 'Client secret'
+    secretLabel: 'Client secret',
+    pricing: 'free'
   },
   {
     id: 'rs',
@@ -611,6 +610,22 @@ const SUPPLIERS: SupplierDef[] = [
     label: 'Cleste',
     region: 'Romania',
     searchUrl: (q) => `https://www.cleste.ro/cautare?controller=search&s=${encodeURIComponent(q)}`
+  },
+  {
+    // Ultimul deliberat: acopera toti distribuitorii dintr-un apel, dar planul
+    // gratuit raspunde "part limit of 0", deci datele de stoc cer abonament.
+    // Verificat pe cont real. Ramane pentru cine il are oricum.
+    id: 'nexar',
+    label: 'Nexar / Octopart',
+    region: 'Agregator',
+    searchUrl: (q) => `https://octopart.com/search?q=${encodeURIComponent(q)}`,
+    api: nexarApi,
+    needsSecret: true,
+    apiSignupUrl: 'https://nexar.com/api',
+    keyLabel: 'Client ID',
+    secretLabel: 'Client secret',
+    aggregator: true,
+    pricing: 'paid'
   }
 ]
 
@@ -629,7 +644,8 @@ export async function listSuppliers(): Promise<SupplierInfo[]> {
     needsSecret: s.needsSecret,
     apiSignupUrl: s.apiSignupUrl,
     keyLabel: s.keyLabel,
-    secretLabel: s.secretLabel
+    secretLabel: s.secretLabel,
+    pricing: s.pricing
   }))
 }
 

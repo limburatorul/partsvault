@@ -6,6 +6,17 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.4.3] - 2026-08-16
+
+### Schimbat
+
+- **Nexar nu mai apare primul in Setari.** Fiind primul, sugera ca ar fi calea
+  principala, cand de fapt e singurul care cere abonament platit -- irational
+  pentru cateva piese pe luna, cand fiecare distribuitor da acces gratuit la
+  datele lui. Acum e ultimul, iar primele sunt cele cu cheie gratuita.
+- Fiecare furnizor arata in Setari daca cheia e **gratuita** sau cere
+  **abonament platit**, ca sa se vada dintr-o privire unde nu se plateste nimic.
+
 ## [0.4.2] - 2026-08-16
 
 ### Corectat

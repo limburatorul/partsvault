@@ -102,10 +102,15 @@ export default function SettingsView({
           Fara chei, tabelul de furnizori arata doar link-uri catre cautarea fiecarui magazin. Cu
           cheie, vezi denumirea, stocul si pretul direct in aplicatie.
           <br />
-          <b>Daca pui una singura, pune Mouser</b> &mdash; cheia se obtine in cateva minute si
-          intoarce imediat pret si stoc. Nexar ar acoperi toti distribuitorii dintr-un foc, dar
-          planul lui gratuit nu include date de stoc (raspunde <i>part limit of 0</i>). Cheile se
-          tin local, in fisierul de configurare, si nu pleaca nicaieri altundeva.
+          <b>Primele patru dau cheie gratuita</b> &mdash; iti faci cont, ceri cheia, o pui aici. Nu
+          ai nevoie de toate: fiecare in parte umple tabelul cu randul lui. Incepe cu Mouser, e cel
+          mai rapid de obtinut.
+          <br />
+          Nexar ar acoperi toti distribuitorii dintr-un singur apel, dar datele de stoc cer
+          abonament platit &mdash; nu merita pentru cateva piese pe luna, cand fiecare distribuitor
+          da acces gratuit la ale lui.
+          <br />
+          Cheile se tin local, in fisierul de configurare, si nu pleaca nicaieri altundeva.
         </p>
         {suppliers
           .filter((s) => s.supportsApi)
@@ -114,6 +119,16 @@ export default function SettingsView({
               <div className="source-info">
                 <div className="source-name">
                   {s.label} <span className="badge">{s.region}</span>
+                  {s.pricing === 'free' && (
+                    <span className="badge" style={{ color: 'var(--good)' }}>
+                      cheie gratuita
+                    </span>
+                  )}
+                  {s.pricing === 'paid' && (
+                    <span className="badge" style={{ color: 'var(--warn)' }}>
+                      abonament platit
+                    </span>
+                  )}
                   {s.apiConfigured && (
                     <span className="badge" style={{ color: 'var(--good)' }}>
                       configurat

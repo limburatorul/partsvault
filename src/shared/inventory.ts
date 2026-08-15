@@ -105,6 +105,8 @@ export interface SupplierInfo {
   needsSecret?: boolean
   /** Unde isi ia utilizatorul cheia. */
   apiSignupUrl?: string
+  /** Cat costa accesul la API: cheie gratuita sau abonament. */
+  pricing?: 'free' | 'paid'
   /** Ce anume trebuie pus in cele doua campuri. */
   keyLabel?: string
   secretLabel?: string

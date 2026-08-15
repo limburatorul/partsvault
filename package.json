@@ -1,6 +1,6 @@
 {
   "name": "partsvault",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Cauta si arhiveaza local datasheet-uri, scheme si note de aplicatie pentru circuite integrate",
   "main": "out/main/index.js",
   "author": "tucu + mihai",
