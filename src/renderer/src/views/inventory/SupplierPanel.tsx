@@ -115,11 +115,33 @@ export default function SupplierPanel({
         </div>
       )}
 
-      {results !== null && missingKeys > 0 && (
+      {results !== null && rows.length > 0 && missingKeys === rows.length && (
+        <div
+          style={{
+            marginTop: 14,
+            padding: '12px 14px',
+            border: '1px solid var(--accent-dim)',
+            borderRadius: 'var(--radius)',
+            background: 'rgba(76, 141, 255, 0.06)'
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            Tabelul e gol pentru ca nu e configurata nicio cheie
+          </div>
+          <p className="hint" style={{ marginBottom: 8 }}>
+            Magazinele mari blocheaza citirea automata a paginilor, deci stocul si pretul se pot
+            aduce doar prin API-ul lor. Cea mai scurta cale e <b>Nexar / Octopart</b>: o singura
+            cheie gratuita aduce stoc si pret de la Mouser, DigiKey, TME, Farnell si RS deodata.
+          </p>
+          <button onClick={() => window.api.openExternal('https://nexar.com/api')}>
+            Ia o cheie Nexar &rarr;
+          </button>
+        </div>
+      )}
+
+      {results !== null && missingKeys > 0 && missingKeys < rows.length && (
         <p className="hint" style={{ marginTop: 12, marginBottom: 0 }}>
-          {missingKeys} furnizori apar doar ca link: magazinele mari blocheaza citirea automata a
-          paginilor, deci stocul si pretul se pot aduce doar prin API-ul lor oficial. Cheia e
-          gratuita si se pune in Setari.
+          {missingKeys} furnizori apar doar ca link, fiindca n-au cheie configurata.
         </p>
       )}
 

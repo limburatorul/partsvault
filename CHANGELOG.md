@@ -6,6 +6,18 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.4.1] - 2026-08-16
+
+### Adaugat
+
+- **Nexar / Octopart** ca agregator de furnizori: o singura cheie gratuita aduce
+  stoc si pret de la Mouser, DigiKey, TME, Farnell si RS deodata, in loc de cate
+  un cont la fiecare magazin. Randurile lui inlocuiesc link-urile goale ale
+  distribuitorilor pe care ii acopera, ca sa nu apara acelasi magazin de doua ori.
+- Cand tabelul de furnizori e gol fiindca nu e configurata nicio cheie, spune
+  asta explicit, cu link direct catre inregistrare, in loc sa lase impresia ca
+  piesa n-a fost gasita.
+
 ## [0.4.0] - 2026-08-16
 
 ### Adaugat

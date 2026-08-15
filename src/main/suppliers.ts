@@ -34,6 +34,8 @@ interface SupplierDef {
   apiSignupUrl?: string
   keyLabel?: string
   secretLabel?: string
+  /** Acopera mai multi distribuitori deodata; randurile lui le inlocuiesc pe ale lor. */
+  aggregator?: boolean
 }
 
 // ---------------------------------------------------------------- API Mouser
@@ -377,9 +379,175 @@ async function digikeyApi(
   }))
 }
 
+// ------------------------------------------------------- API Nexar (Octopart)
+
+interface NexarTokenResponse {
+  access_token?: string
+  expires_in?: number
+}
+
+interface NexarSearchResponse {
+  data?: {
+    supSearchMpn?: {
+      results?: Array<{
+        part?: {
+          mpn?: string
+          shortDescription?: string
+          manufacturer?: { name?: string }
+          bestDatasheet?: { url?: string }
+          sellers?: Array<{
+            company?: { name?: string }
+            offers?: Array<{
+              inventoryLevel?: number
+              clickUrl?: string
+              moq?: number
+              prices?: Array<{ quantity?: number; price?: number; currency?: string }>
+            }>
+          }>
+        }
+      }>
+    }
+  }
+}
+
+let nexarToken: { value: string; expiresAt: number } | null = null
+
+async function nexarAccessToken(
+  clientId: string,
+  clientSecret: string,
+  signal?: AbortSignal
+): Promise<string> {
+  if (nexarToken && Date.now() < nexarToken.expiresAt) return nexarToken.value
+
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: 'supply.domain'
+  }).toString()
+
+  const res = await httpFetch('https://identity.nexar.com/connect/token', {
+    method: 'POST',
+    body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeoutMs: 20_000,
+    retries: 1,
+    signal
+  })
+  if (!res.ok) throw new Error(`Nexar token: ${res.status}`)
+
+  const data = (await res.json()) as NexarTokenResponse
+  if (!data.access_token) throw new Error('Nexar nu a intors token')
+
+  nexarToken = {
+    value: data.access_token,
+    expiresAt: Date.now() + Math.max(60, (data.expires_in ?? 3600) - 120) * 1000
+  }
+  return nexarToken.value
+}
+
+const NEXAR_QUERY = `
+query Search($q: String!) {
+  supSearchMpn(q: $q, limit: 5) {
+    results {
+      part {
+        mpn
+        shortDescription
+        manufacturer { name }
+        bestDatasheet { url }
+        sellers(authorizedOnly: true) {
+          company { name }
+          offers {
+            inventoryLevel
+            moq
+            clickUrl
+            prices { quantity price currency }
+          }
+        }
+      }
+    }
+  }
+}`
+
+/**
+ * Nexar (Octopart) agrega stocul si pretul de la toti distribuitorii mari
+ * deodata. E singura integrare care populeaza tabelul intreg cu o singura
+ * cheie, in loc de cate un cont la fiecare magazin.
+ *
+ * Intoarce cate un rand per distribuitor, ca sa se poata compara pe verticala.
+ */
+async function nexarApi(
+  query: string,
+  clientId: string,
+  clientSecret: string,
+  signal?: AbortSignal
+): Promise<SupplierResult[]> {
+  const token = await nexarAccessToken(clientId, clientSecret, signal)
+
+  const res = await httpFetch('https://api.nexar.com/graphql', {
+    method: 'POST',
+    body: { query: NEXAR_QUERY, variables: { q: query } },
+    headers: { Authorization: `Bearer ${token}` },
+    timeoutMs: 30_000,
+    retries: 1,
+    signal
+  })
+  if (!res.ok) throw new Error(`Nexar a raspuns ${res.status}`)
+
+  const data = (await res.json()) as NexarSearchResponse
+  const out: SupplierResult[] = []
+
+  for (const result of data.data?.supSearchMpn?.results ?? []) {
+    const part = result.part
+    if (!part) continue
+
+    for (const seller of part.sellers ?? []) {
+      // ofertele aceluiasi distribuitor difera pe ambalare; o iau pe prima
+      const offer = seller.offers?.[0]
+      if (!offer) continue
+
+      out.push({
+        supplierId: `nexar:${(seller.company?.name ?? 'distribuitor').toLowerCase()}`,
+        supplierLabel: seller.company?.name ?? 'Distribuitor',
+        url: offer.clickUrl ?? `https://octopart.com/search?q=${encodeURIComponent(query)}`,
+        partNumber: part.mpn,
+        description: part.shortDescription,
+        manufacturer: part.manufacturer?.name,
+        stock: offer.inventoryLevel,
+        minQuantity: offer.moq,
+        datasheetUrl: part.bestDatasheet?.url,
+        priceBreaks: (offer.prices ?? [])
+          .filter((p) => typeof p.price === 'number')
+          .map((p) => ({
+            quantity: p.quantity ?? 1,
+            price: p.price as number,
+            currency: p.currency ?? 'USD'
+          })),
+        linkOnly: false
+      })
+    }
+  }
+
+  // cele cu stoc primele: alea se pot comanda azi
+  return out.sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0)).slice(0, 20)
+}
+
 // ------------------------------------------------------------------ registru
 
 const SUPPLIERS: SupplierDef[] = [
+  {
+    // agregator: o singura cheie aduce stoc si pret de la toti distribuitorii
+    id: 'nexar',
+    label: 'Nexar / Octopart',
+    region: 'Agregator',
+    searchUrl: (q) => `https://octopart.com/search?q=${encodeURIComponent(q)}`,
+    api: nexarApi,
+    needsSecret: true,
+    apiSignupUrl: 'https://nexar.com/api',
+    keyLabel: 'Client ID',
+    secretLabel: 'Client secret',
+    aggregator: true
+  },
   {
     id: 'mouser',
     label: 'Mouser',
@@ -500,7 +668,22 @@ export async function searchSuppliers(
     })
   )
 
-  return results.flat()
+  const rows = results.flat()
+
+  // Cand agregatorul a intors date pentru un distribuitor, randul lui "doar
+  // link" devine zgomot: acelasi magazin ar aparea de doua ori, o data cu stoc
+  // si pret si o data gol.
+  const coveredByAggregator = new Set(
+    rows
+      .filter((r) => !r.linkOnly && r.supplierId.startsWith('nexar:'))
+      .map((r) => r.supplierLabel.toLowerCase())
+  )
+
+  return rows.filter((r) => {
+    if (!r.linkOnly) return true
+    const label = r.supplierLabel.toLowerCase()
+    return ![...coveredByAggregator].some((c) => c.includes(label) || label.includes(c))
+  })
 }
 
 /** URL-ul de cautare al unui furnizor, pentru butoanele din interfata. */

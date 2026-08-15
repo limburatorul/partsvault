@@ -112,6 +112,7 @@ sau nu in stoc, si pretul.
 
 | Furnizor | Regiune | Integrare | Ce cere |
 |---|---|---|---|
+| **Nexar / Octopart** | agregator | API | Client ID + secret |
 | Mouser | International | API | API key |
 | Farnell | Romania | API | API key |
 | TME | Romania | API | Token + secret (semnatura HMAC) |
@@ -124,6 +125,10 @@ Fara nicio configurare, fiecare furnizor apare in tabel ca link catre cautarea
 lui, cu codul completat -- merge intotdeauna si nu se strica. Cu o cheie pusa in
 Setari, furnizorul intoarce denumire, stoc, pret si datasheet direct in
 aplicatie. Cheile stau local, in fisierul de configurare, si nu pleaca nicaieri.
+
+**Daca pui una singura, pune Nexar / Octopart.** E agregator: acopera Mouser,
+DigiKey, TME, Farnell si RS dintr-un singur apel, deci umple tabelul fara sa-ti
+faci cont la fiecare magazin in parte.
 
 **De ce e nevoie de chei:** citirea automata a paginilor de magazin nu e o
 alternativa. Verificat pe viu, cu randare intr-un browser complet: Mouser,

@@ -99,9 +99,12 @@ export default function SettingsView({
       <div className="card">
         <h3>Chei API furnizori</h3>
         <p className="hint">
-          Optionale. Fara ele, cautarea la furnizori deschide magazinul in browser cu codul
-          completat &mdash; merge oricum. Cu cheie, vezi pret si stoc direct in aplicatie. Cheile se
-          tin local, in fisierul de configurare, si nu pleaca nicaieri altundeva.
+          Fara chei, tabelul de furnizori arata doar link-uri catre cautarea fiecarui magazin. Cu
+          cheie, vezi denumirea, stocul si pretul direct in aplicatie.
+          <br />
+          <b>Daca pui una singura, pune Nexar / Octopart</b> &mdash; e agregator si acopera Mouser,
+          DigiKey, TME, Farnell si RS dintr-un foc. Cheile se tin local, in fisierul de configurare,
+          si nu pleaca nicaieri altundeva.
         </p>
         {suppliers
           .filter((s) => s.supportsApi)
