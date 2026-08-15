@@ -112,7 +112,7 @@ sau nu in stoc, si pretul.
 
 | Furnizor | Regiune | Integrare | Ce cere | Cost |
 |---|---|---|---|---|
-| Mouser | International | API | API key | gratuit |
+| Mouser ✔ | International | API | API key | gratuit |
 | Farnell | Romania | API | API key | gratuit |
 | TME | Romania | API | Token + secret (HMAC) | gratuit |
 | DigiKey | International | API | Client ID + secret (OAuth) | gratuit |
@@ -128,6 +128,10 @@ aplicatie. Cheile stau local, in fisierul de configurare, si nu pleaca nicaieri.
 
 **Primele patru dau cheie gratuita.** Nu-ti trebuie toate -- fiecare in parte
 umple tabelul cu randul lui. Incepe cu Mouser, e cel mai rapid de obtinut.
+
+`✔` = integrare testata pe o cheie reala. Cu Mouser, `LM358` intoarce stoc si
+pret in lei, de pe storefront-ul romanesc. Celelalte sunt scrise dupa
+documentatie, dar inca neverificate pe date adevarate.
 
 Nexar / Octopart ar fi fost varianta ideala -- un singur apel acopera toti
 distribuitorii -- dar datele de stoc cer abonament platit. Testat pe cont real:

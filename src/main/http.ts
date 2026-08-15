@@ -121,7 +121,13 @@ export async function httpFetch(url: string, opts: FetchOptions = {}): Promise<R
       try {
         const headers = { ...DEFAULT_HEADERS, ...extraHeaders }
         if (referer) headers.Referer = referer
-        if (isJsonBody) headers['Content-Type'] = 'application/json'
+        if (isJsonBody) {
+          headers['Content-Type'] = 'application/json'
+          // `Accept`-ul implicit e gandit pentru pagini web si cere XML inaintea
+          // altor formate. Mouser il respecta si raspunde in XML, iar `res.json()`
+          // crapa. Cand trimit JSON, vreau JSON si inapoi.
+          headers.Accept = 'application/json'
+        }
         const res = await fetch(url, {
           method,
           headers,

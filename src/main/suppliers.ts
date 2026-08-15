@@ -43,6 +43,7 @@ interface SupplierDef {
 // ---------------------------------------------------------------- API Mouser
 
 interface MouserResponse {
+  Errors?: Array<{ Message?: string; Code?: string }>
   SearchResults?: {
     Parts?: Array<{
       MouserPartNumber?: string
@@ -82,6 +83,7 @@ async function mouserApi(
   const res = await httpFetch(`https://api.mouser.com/api/v1/search/keyword?apiKey=${key}`, {
     method: 'POST',
     body: { SearchByKeywordRequest: { keyword: query, records: 8, startingRecord: 0 } },
+    headers: { Accept: 'application/json' },
     timeoutMs: 25_000,
     retries: 1,
     signal
@@ -89,7 +91,11 @@ async function mouserApi(
   if (!res.ok) throw new Error(`Mouser a raspuns ${res.status}`)
 
   const data = (await res.json()) as MouserResponse
-  return (data.SearchResults?.Parts ?? []).slice(0, 8).map((p) => ({
+  // Mouser raporteaza erorile de cheie in corp, cu HTTP 200
+  if (data.Errors?.length) {
+    throw new Error(data.Errors[0].Message ?? 'Mouser a refuzat cererea')
+  }
+  const parts = (data.SearchResults?.Parts ?? []).slice(0, 8).map((p) => ({
     supplierId: 'mouser',
     supplierLabel: 'Mouser',
     url: p.ProductDetailUrl ?? SUPPLIERS[0].searchUrl(query),
@@ -108,6 +114,11 @@ async function mouserApi(
       .filter((b) => b.price > 0),
     linkOnly: false
   }))
+
+  // Rezultatele contin si variante nefabricate, fara stoc si fara pret. Sunt
+  // informatie corecta, dar nu ajuta pe cineva care vrea sa comande azi, deci
+  // coboara sub cele disponibile.
+  return parts.sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0))
 }
 
 // --------------------------------------------------------- API Farnell (e14)

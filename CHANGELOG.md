@@ -6,6 +6,28 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.4.4] - 2026-08-16
+
+### Corectat
+
+- **Integrarea Mouser nu functiona deloc**, din cauza unui antet pe care il
+  trimiteam eu. `Accept`-ul implicit e gandit pentru pagini web si cere XML
+  inaintea altor formate; Mouser il respecta si raspundea in XML, iar
+  `res.json()` crapa cu *"Unexpected token '<'"*. Acum cererile care trimit JSON
+  cer explicit JSON si inapoi -- reparatia acopera si Farnell, DigiKey si Nexar.
+- Mouser raporteaza erorile de cheie in corpul raspunsului, cu HTTP 200. Erau
+  citite ca succes cu zero piese.
+
+### Schimbat
+
+- Rezultatele Mouser sunt ordonate dupa stoc: variantele nefabricate, fara stoc
+  si fara pret, coboara sub cele care se pot comanda azi.
+
+### Verificat pe date reale
+
+Cu o cheie Mouser adevarata, cautarea `LM358` intoarce stoc si pret in lei, de
+pe storefront-ul romanesc: `LM358APT`, 17336 buc, 1,47 RON, STMicroelectronics.
+
 ## [0.4.3] - 2026-08-16
 
 ### Schimbat
