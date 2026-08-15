@@ -6,6 +6,24 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.4.2] - 2026-08-16
+
+### Corectat
+
+- **Esecurile de la furnizori erau invizibile.** Orice eroare de API -- cheie
+  gresita, cota depasita, serviciu picat -- cadea tacut pe randul cu link, deci
+  aratau toate identic cu "n-am pus cheia". Acum motivul apare in tabel, in
+  dreptul furnizorului.
+- Nexar raspunde `200` chiar si cand refuza cererea, cu eroarea in corpul
+  GraphQL. Era interpretat ca succes cu zero rezultate.
+
+### Schimbat
+
+- **Recomandarea implicita e acum Mouser, nu Nexar.** Testat pe cont real:
+  planul gratuit Nexar autentifica si accepta interogarea, dar raspunde
+  *"You have exceeded your part limit of 0"* -- nu include date de stoc. Mouser
+  da cheie gratuita in cateva minute si intoarce imediat pret si stoc.
+
 ## [0.4.1] - 2026-08-16
 
 ### Adaugat

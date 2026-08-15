@@ -102,9 +102,10 @@ export default function SettingsView({
           Fara chei, tabelul de furnizori arata doar link-uri catre cautarea fiecarui magazin. Cu
           cheie, vezi denumirea, stocul si pretul direct in aplicatie.
           <br />
-          <b>Daca pui una singura, pune Nexar / Octopart</b> &mdash; e agregator si acopera Mouser,
-          DigiKey, TME, Farnell si RS dintr-un foc. Cheile se tin local, in fisierul de configurare,
-          si nu pleaca nicaieri altundeva.
+          <b>Daca pui una singura, pune Mouser</b> &mdash; cheia se obtine in cateva minute si
+          intoarce imediat pret si stoc. Nexar ar acoperi toti distribuitorii dintr-un foc, dar
+          planul lui gratuit nu include date de stoc (raspunde <i>part limit of 0</i>). Cheile se
+          tin local, in fisierul de configurare, si nu pleaca nicaieri altundeva.
         </p>
         {suppliers
           .filter((s) => s.supportsApi)

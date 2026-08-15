@@ -76,10 +76,15 @@ export default function SupplierPanel({
                         {r.description.slice(0, 70)}
                       </div>
                     )}
-                    {r.linkOnly && (
-                      <div style={{ color: 'var(--text-faint)', fontSize: 11.5 }}>
-                        fara cheie API &mdash; cauta in browser
-                      </div>
+                    {r.error ? (
+                      // esecul are alta cauza decat lipsa cheii: trebuie sa se vada
+                      <div style={{ color: 'var(--bad)', fontSize: 11.5 }}>{r.error}</div>
+                    ) : (
+                      r.linkOnly && (
+                        <div style={{ color: 'var(--text-faint)', fontSize: 11.5 }}>
+                          fara cheie API &mdash; cauta in browser
+                        </div>
+                      )
                     )}
                   </td>
                   <td>{r.manufacturer ?? '—'}</td>
@@ -126,15 +131,16 @@ export default function SupplierPanel({
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            Tabelul e gol pentru ca nu e configurata nicio cheie
+            Niciun furnizor nu a intors date
           </div>
           <p className="hint" style={{ marginBottom: 8 }}>
-            Magazinele mari blocheaza citirea automata a paginilor, deci stocul si pretul se pot
-            aduce doar prin API-ul lor. Cea mai scurta cale e <b>Nexar / Octopart</b>: o singura
-            cheie gratuita aduce stoc si pret de la Mouser, DigiKey, TME, Farnell si RS deodata.
+            Magazinele mari blocheaza citirea automata a paginilor, deci stocul si pretul vin doar
+            prin API-ul lor. Cea mai rapida cheie gratuita e <b>Mouser</b> &mdash; se obtine in
+            cateva minute si intoarce imediat pret si stoc. (Nexar are plan gratuit, dar fara acces
+            la date de stoc.)
           </p>
-          <button onClick={() => window.api.openExternal('https://nexar.com/api')}>
-            Ia o cheie Nexar &rarr;
+          <button onClick={() => window.api.openExternal('https://www.mouser.com/api-hub/')}>
+            Ia o cheie Mouser &rarr;
           </button>
         </div>
       )}

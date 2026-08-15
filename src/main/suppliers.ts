@@ -494,7 +494,12 @@ async function nexarApi(
   })
   if (!res.ok) throw new Error(`Nexar a raspuns ${res.status}`)
 
-  const data = (await res.json()) as NexarSearchResponse
+  const data = (await res.json()) as NexarSearchResponse & { errors?: Array<{ message?: string }> }
+  // GraphQL raspunde 200 chiar si cand refuza cererea; eroarea e in corp
+  if (data.errors?.length) {
+    throw new Error(data.errors[0].message ?? 'Nexar a refuzat interogarea')
+  }
+
   const out: SupplierResult[] = []
 
   for (const result of data.data?.supSearchMpn?.results ?? []) {
@@ -661,9 +666,15 @@ export async function searchSuppliers(
         const viaApi = await supplier.api(trimmed, key, secret, signal)
         // API fara rezultate: las link-ul, poate cautarea manuala gaseste ceva
         return viaApi.length ? viaApi : [fallback]
-      } catch {
-        // cheie gresita, cota depasita, furnizor picat -- link-ul ramane util
-        return [{ ...fallback, description: 'API indisponibil; deschide cautarea in browser' }]
+      } catch (err) {
+        // cheie gresita, cota depasita, furnizor picat -- link-ul ramane util,
+        // dar motivul trebuie sa ajunga in interfata, nu sa dispara in tacere
+        return [
+          {
+            ...fallback,
+            error: err instanceof Error ? err.message : 'API indisponibil'
+          }
+        ]
       }
     })
   )

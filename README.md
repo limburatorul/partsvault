@@ -126,9 +126,14 @@ lui, cu codul completat -- merge intotdeauna si nu se strica. Cu o cheie pusa in
 Setari, furnizorul intoarce denumire, stoc, pret si datasheet direct in
 aplicatie. Cheile stau local, in fisierul de configurare, si nu pleaca nicaieri.
 
-**Daca pui una singura, pune Nexar / Octopart.** E agregator: acopera Mouser,
-DigiKey, TME, Farnell si RS dintr-un singur apel, deci umple tabelul fara sa-ti
-faci cont la fiecare magazin in parte.
+**Daca pui una singura, pune Mouser.** Cheia se obtine in cateva minute si
+intoarce imediat pret si stoc.
+
+Nexar / Octopart ar fi fost varianta ideala -- un singur apel acopera toti
+distribuitorii -- dar planul lui gratuit nu include date de stoc. Testat pe cont
+real: autentificarea si interogarea trec, iar raspunsul e
+`You have exceeded your part limit of 0`. Integrarea e in aplicatie si
+functioneaza, deci merge daca ai un plan platit.
 
 **De ce e nevoie de chei:** citirea automata a paginilor de magazin nu e o
 alternativa. Verificat pe viu, cu randare intr-un browser complet: Mouser,

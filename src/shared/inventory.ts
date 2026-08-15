@@ -85,6 +85,11 @@ export interface SupplierResult {
   datasheetUrl?: string
   /** `true` cand randul e doar un link de cautare, fara date. */
   linkOnly: boolean
+  /**
+   * De ce n-a intors date furnizorul: cheie gresita, cota depasita, API picat.
+   * Fara asta esecurile arata identic cu "n-am cheie", iar omul nu stie ce sa repare.
+   */
+  error?: string
 }
 
 export interface SupplierInfo {
