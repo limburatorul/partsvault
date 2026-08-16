@@ -15,7 +15,9 @@ import type {
   SearchHit,
   SearchProgress,
   SearchRequest,
-  SourceInfo
+  SourceInfo,
+  UpdateInfo,
+  UpdateProgress
 } from '../shared/types'
 
 /**
@@ -109,6 +111,24 @@ const api = {
       ipcRenderer.invoke('suppliers:search', query),
     url: (supplierId: string, query: string): Promise<string | null> =>
       ipcRenderer.invoke('suppliers:url', supplierId, query)
+  },
+
+  update: {
+    check: (): Promise<UpdateInfo> => ipcRenderer.invoke('update:check'),
+    download: (info: UpdateInfo): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('update:download', info),
+    version: (): Promise<string> => ipcRenderer.invoke('app:version'),
+    /** Notificarea de la pornire, cand exista o versiune mai noua. */
+    onAvailable: (cb: (info: UpdateInfo) => void): (() => void) => {
+      const listener = (_e: unknown, info: UpdateInfo): void => cb(info)
+      ipcRenderer.on('update:available', listener)
+      return () => ipcRenderer.removeListener('update:available', listener)
+    },
+    onProgress: (cb: (p: UpdateProgress) => void): (() => void) => {
+      const listener = (_e: unknown, p: UpdateProgress): void => cb(p)
+      ipcRenderer.on('update:progress', listener)
+      return () => ipcRenderer.removeListener('update:progress', listener)
+    }
   },
 
   openExternal: (url: string): Promise<boolean> => ipcRenderer.invoke('shell:open-external', url)

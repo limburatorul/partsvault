@@ -39,6 +39,27 @@ tot cu librarie.
 In varianta portabila nu mai apare ecranul care intreaba unde sa salveze —
 raspunsul e intotdeauna "langa executabil". Calea ramane schimbabila din Setari.
 
+### Auto-actualizare
+
+La pornire verifica GitHub Releases si, daca a aparut o versiune noua, ofera
+descarcarea printr-un banner. Executabilul nou se pune langa cel curent,
+porneste, iar cel vechi e sters.
+
+Doua detalii care nu sunt evidente si care strica implementarea daca lipsesc:
+
+- **`process.execPath` nu ajuta.** Exe-ul portabil se auto-extrage in
+  `%TEMP%\<random>\` la fiecare pornire, deci `execPath` arata spre copia
+  temporara. Folderul real, unde sta fisierul pe care il deschide omul, vine din
+  `PORTABLE_EXECUTABLE_DIR`, setata de wrapper-ul electron-builder.
+- **Stergerea vechiului exe are nevoie de reincercari.** `app.quit()` doar
+  *programeaza* inchiderea, deci procesul inlocuit poate tine inca lock pe
+  fisierul lui in momentul in care pornim. O singura incercare esueaza tacut si
+  lasa gunoiul acolo pana la urmatoarea repornire; curatarea ruleaza de trei
+  ori, imediat, la 5 si la 20 de secunde.
+
+Consecinta: **nu tine mai multe versiuni in acelasi folder** — curatarea sterge
+orice `PartsVault-<versiune>-portabil.exe` mai vechi decat cel care ruleaza.
+
 ## Cum gaseste piesele greu de gasit
 
 Valoarea aplicatiei nu sta in a interoga Google, ci in ce face **inainte** si

@@ -616,6 +616,19 @@ label.check input {
   display: block;
 }
 
+/* ---------- banner de actualizare ---------- */
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: rgba(76, 141, 255, 0.1);
+}
+
 /* ---------- inventar ---------- */
 
 .table-wrap {

@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import type {
   Component,
@@ -11,7 +11,8 @@ import type {
   DownloadProgress,
   LibraryDoc,
   SearchProgress,
-  SearchRequest
+  SearchRequest,
+  UpdateInfo
 } from '../shared/types'
 import {
   addField,
@@ -27,6 +28,7 @@ import {
   upsertComponent
 } from './inventory'
 import { listSuppliers, searchSuppliers, supplierSearchUrl } from './suppliers'
+import { checkForUpdate, downloadAndRestart } from './updater'
 import { defaultLibrarySuggestion, loadConfig, saveConfig, validateLibraryPath } from './config'
 import { downloadHit } from './download'
 import { setPolitenessDelay } from './http'
@@ -215,6 +217,17 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('suppliers:url', async (_e, supplierId: string, query: string) =>
     supplierSearchUrl(supplierId, query)
   )
+
+  // ---- actualizare ----
+
+  ipcMain.handle('update:check', async () => checkForUpdate())
+
+  ipcMain.handle('update:download', async (_e, info: UpdateInfo) => {
+    const window = getWindow()
+    return downloadAndRestart(info, (p) => send(window, 'update:progress', p))
+  })
+
+  ipcMain.handle('app:version', async () => app.getVersion())
 
   ipcMain.handle('shell:open-external', async (_e, url: string) => {
     // deschid doar http(s): altfel as putea fi pacalit sa lansez un fisier local

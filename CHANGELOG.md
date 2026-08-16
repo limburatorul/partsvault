@@ -6,6 +6,29 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.5.0] - 2026-08-16
+
+### Adaugat
+
+- **Auto-actualizare.** La pornire verifica daca a aparut o versiune noua pe
+  GitHub (tacut daca nu). Cand exista, un banner ofera descarcarea: executabilul
+  nou se pune langa cel curent, porneste, iar cel vechi e sters. Buton de
+  verificare manuala si versiunea instalata, in Setari.
+- Versiunea apare in bara laterala, ca sa se vada dintr-o privire ca
+  actualizarea a prins.
+
+### Note de implementare
+
+Tiparul e preluat din Game Browser, unde ruleaza de zeci de versiuni, cu tot cu
+cele doua capcane deja platite acolo:
+
+- `process.execPath` arata spre copia temporara din `%TEMP%`, fiindca exe-ul
+  portabil se auto-extrage la fiecare pornire. Folderul real vine din
+  `PORTABLE_EXECUTABLE_DIR`.
+- stergerea executabilului vechi esueaza daca procesul inlocuit inca tine lock
+  pe fisier -- `app.quit()` doar *programeaza* inchiderea. De aceea curatarea
+  ruleaza de trei ori: imediat, la 5 secunde si la 20.
+
 ## [0.4.4] - 2026-08-16
 
 ### Corectat

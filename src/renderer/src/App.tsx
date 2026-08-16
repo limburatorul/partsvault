@@ -5,6 +5,7 @@ import InventoryView from './views/InventoryView'
 import LibraryView from './views/LibraryView'
 import SearchView from './views/SearchView'
 import SettingsView from './views/SettingsView'
+import UpdateBanner from './views/UpdateBanner'
 
 type Tab = 'search' | 'library' | 'inventory' | 'settings'
 
@@ -12,11 +13,13 @@ export default function App(): JSX.Element {
   const [config, setConfig] = useState<AppConfig | null>(null)
   const [tab, setTab] = useState<Tab>('search')
   const [docCount, setDocCount] = useState(0)
+  const [version, setVersion] = useState('')
   /** Creste la fiecare descarcare reusita, ca sa reimprospatez libraria. */
   const [libraryVersion, setLibraryVersion] = useState(0)
 
   useEffect(() => {
     window.api.config.get().then(setConfig)
+    window.api.update.version().then(setVersion).catch(() => setVersion(''))
   }, [])
 
   const refreshCount = useCallback(() => {
@@ -79,10 +82,13 @@ export default function App(): JSX.Element {
           <button className="ghost" onClick={() => window.api.library.openRoot()}>
             Deschide folderul
           </button>
+          {/* versiunea la vedere: confirma dintr-o privire ca actualizarea a prins */}
+          {version && <div style={{ padding: '6px 10px 0' }}>v{version}</div>}
         </div>
       </nav>
 
       <main className="main">
+        <UpdateBanner />
         {tab === 'search' && <SearchView onLibraryChanged={onLibraryChanged} />}
         {tab === 'library' && <LibraryView version={libraryVersion} onChanged={onLibraryChanged} />}
         {tab === 'inventory' && <InventoryView />}

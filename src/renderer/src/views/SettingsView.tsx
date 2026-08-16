@@ -19,6 +19,27 @@ export default function SettingsView({
 }): JSX.Element {
   const [sources, setSources] = useState<SourceInfo[]>([])
   const [suppliers, setSuppliers] = useState<SupplierInfo[]>([])
+  const [version, setVersion] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [updateMessage, setUpdateMessage] = useState('')
+  const [updateError, setUpdateError] = useState(false)
+
+  useEffect(() => {
+    window.api.update.version().then(setVersion).catch(() => setVersion(''))
+  }, [])
+
+  async function checkUpdate(): Promise<void> {
+    setChecking(true)
+    setUpdateMessage('')
+    const info = await window.api.update.check()
+    setChecking(false)
+    setUpdateError(Boolean(info.error))
+    if (info.error) setUpdateMessage(`Nu am putut verifica: ${info.error}`)
+    else if (info.available) {
+      // bannerul din capul paginii preia de aici, cu butonul de instalare
+      setUpdateMessage(`Versiunea ${info.latestVersion} e disponibila.`)
+    } else setUpdateMessage('Esti pe cea mai noua versiune.')
+  }
 
   useEffect(() => {
     window.api.sources.list().then(setSources).catch(() => setSources([]))
@@ -54,6 +75,32 @@ export default function SettingsView({
     <>
       <h2 className="page-title">Setari</h2>
       <p className="page-sub">Unde salvez, de unde caut si cat de agresiv.</p>
+
+      <div className="card">
+        <h3>Versiune si actualizari</h3>
+        <p className="hint">
+          Aplicatia verifica singura la fiecare pornire daca a aparut o versiune noua. Cand
+          actualizezi, executabilul nou se descarca langa cel curent, porneste, iar cel vechi e
+          sters automat la urmatoarea deschidere.
+        </p>
+        <div className="field">
+          <label>Versiunea instalata</label>
+          <div className="path-box" style={{ flex: 'none', minWidth: 90 }}>
+            {version || '...'}
+          </div>
+          <button onClick={checkUpdate} disabled={checking}>
+            {checking ? 'Verific...' : 'Verifica acum'}
+          </button>
+        </div>
+        {updateMessage && (
+          <div
+            className="hint"
+            style={{ marginBottom: 0, color: updateError ? 'var(--bad)' : 'var(--good)' }}
+          >
+            {updateMessage}
+          </div>
+        )}
+      </div>
 
       <div className="card">
         <h3>Folderul librariei</h3>

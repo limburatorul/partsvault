@@ -161,6 +161,25 @@ export interface AppConfig {
  */
 export type QueryType = 'part' | 'device'
 
+/** Ce s-a aflat despre o versiune mai noua publicata pe GitHub. */
+export interface UpdateInfo {
+  available: boolean
+  currentVersion: string
+  latestVersion?: string
+  notes?: string
+  downloadUrl?: string
+  sizeBytes?: number
+  /** Motivul pentru care verificarea n-a putut fi facuta. */
+  error?: string
+}
+
+export interface UpdateProgress {
+  phase: 'downloading' | 'verifying' | 'restarting' | 'error'
+  receivedBytes?: number
+  totalBytes?: number
+  message?: string
+}
+
 /** Rezultatul analizei a ceea ce a introdus utilizatorul. */
 export interface PartAnalysis {
   queryType: QueryType

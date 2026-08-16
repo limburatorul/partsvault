@@ -4,6 +4,7 @@ import { disposeBrowser } from './browser'
 import { loadConfig } from './config'
 import { setPolitenessDelay } from './http'
 import { registerIpc } from './ipc'
+import { checkForUpdate, cleanupOldExecutables } from './updater'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -47,6 +48,19 @@ app.whenReady().then(async () => {
 
   registerIpc(() => mainWindow)
   createWindow()
+
+  // curat executabilele vechi ramase langa cel curent, cu reincercari:
+  // procesul inlocuit poate tine inca lock pe fisierul lui
+  cleanupOldExecutables()
+
+  // verificarea porneste dupa ce fereastra e vizibila, ca sa nu incetineasca
+  // pornirea; e tacuta daca nu exista versiune noua
+  setTimeout(async () => {
+    const info = await checkForUpdate()
+    if (info.available && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update:available', info)
+    }
+  }, 3000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
