@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
 import path from 'node:path'
 import { disposeBrowser } from './browser'
-import { loadConfig } from './config'
+import { isPortable, loadConfig } from './config'
 import { setPolitenessDelay } from './http'
 import { registerIpc } from './ipc'
 import { checkForUpdate, cleanupOldExecutables } from './updater'
@@ -53,14 +53,18 @@ app.whenReady().then(async () => {
   // procesul inlocuit poate tine inca lock pe fisierul lui
   cleanupOldExecutables()
 
-  // verificarea porneste dupa ce fereastra e vizibila, ca sa nu incetineasca
-  // pornirea; e tacuta daca nu exista versiune noua
-  setTimeout(async () => {
-    const info = await checkForUpdate()
-    if (info.available && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update:available', info)
-    }
-  }, 3000)
+  // Verificarea porneste dupa ce fereastra e vizibila, ca sa nu incetineasca
+  // pornirea; e tacuta daca nu exista versiune noua. Doar pe varianta portabila:
+  // altfel in dev ar aparea un banner care ofera o actualizare ce n-are cum sa
+  // se instaleze, fiindca nu exista un exe langa care sa punem altul.
+  if (isPortable()) {
+    setTimeout(async () => {
+      const info = await checkForUpdate()
+      if (info.available && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update:available', info)
+      }
+    }, 3000)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

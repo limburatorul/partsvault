@@ -35,6 +35,10 @@ export default function SettingsView({
     setChecking(false)
     setUpdateError(Boolean(info.error))
     if (info.error) setUpdateMessage(`Nu am putut verifica: ${info.error}`)
+    else if (info.available && !info.downloadUrl) {
+      setUpdateError(true)
+      setUpdateMessage('Exista o versiune noua, dar release-ul n-are executabil.')
+    }
     else if (info.available) {
       // bannerul din capul paginii preia de aici, cu butonul de instalare
       setUpdateMessage(`Versiunea ${info.latestVersion} e disponibila.`)

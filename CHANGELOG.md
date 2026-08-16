@@ -6,6 +6,17 @@ Cat timp suntem pe `0.x`, `MINOR` creste la functionalitate noua si poate aduce
 schimbari incompatibile, iar `PATCH` doar la corectii. Prima versiune `1.0.0` se
 da cand formatul librariei de pe disc devine stabil.
 
+## [0.5.1] - 2026-08-16
+
+### Corectat
+
+- Verificarea de actualizare la pornire rula si in afara variantei portabile,
+  deci in dezvoltare aparea un banner care oferea o actualizare imposibil de
+  instalat -- nu exista un executabil langa care sa fie pus altul. Acum
+  porneste doar cand rulam portabil.
+- Verificarea manuala din Setari spune explicit daca versiunea noua exista dar
+  release-ul n-are executabil atasat, in loc sa para ca totul e in regula.
+
 ## [0.5.0] - 2026-08-16
 
 ### Adaugat
